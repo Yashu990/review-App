@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Feedback - Review Boost</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #0066FF; --text: #333; --light: #f9f9f9; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: var(--text); display: flex; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 500px; padding: 24px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 40px; margin-top: 40px; }
+        .stars { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .star { font-size: 44px; color: #ddd; cursor: pointer; transition: 0.2s; }
+        .star.active { color: #FFD700; }
+        .form { display: none; flex-direction: column; gap: 16px; transition: 0.3s; opacity: 0; transform: translateY(20px); }
+        .form.visible { display: flex; opacity: 1; transform: translateY(0); }
+        label { font-weight: 600; font-size: 14px; margin-bottom: -10px; }
+        input, textarea { padding: 14px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; background: var(--light); font-family: inherit; outline: none; }
+        input:focus, textarea:focus { border-color: var(--primary); }
+        button { background: var(--primary); color: #fff; border: none; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .success { display: none; text-align: center; padding: 100px 20px; }
+        .success.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="feedback-view">
+            <div class="header">
+                <h1 style="margin:0; font-size: 28px;">Customer Feedback</h1>
+                <p id="store-name" style="color: #999; margin-top: 5px;">Finding store...</p>
+            </div>
+
+            <div class="stars" id="star-container">
+                <span class="star" data-val="1">★</span>
+                <span class="star" data-val="2">★</span>
+                <span class="star" data-val="3">★</span>
+                <span class="star" data-val="4">★</span>
+                <span class="star" data-val="5">★</span>
+            </div>
+
+            <p id="star-hint" style="text-align: center; font-weight: 600; color: var(--primary); margin-bottom: 20px;">Tap to rate</p>
+
+            <div class="form" id="review-form">
+                <label>Your Full Name</label>
+                <input type="text" id="cust-name" placeholder="John Doe">
+                <label>Mobile Number (for our manager to solve issues)</label>
+                <input type="tel" id="cust-phone" placeholder="+91 0000000000">
+                <label>Tell use how we can improve</label>
+                <textarea id="cust-comment" rows="4" placeholder="Share your experience..."></textarea>
+                <button onclick="submitFeedback()">Send Feedback</button>
+            </div>
+        </div>
+
+        <div class="success" id="success-view">
+            <h1 style="font-size: 50px;">✅</h1>
+            <h2 style="font-size: 24px;">Thank You!</h2>
+            <p id="success-msg" style="color: #666; font-size: 16px;">We value your feedback. Our team will look into this immediately.</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedRating = 0;
+        let googleLink = "";
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const bizId = urlParams.get('id');
+
+        // Fetch Store Details from Backend
+        async function fetchStore() {
+            if (!bizId) {
+                document.getElementById('store-name').innerText = "Store ID missing in link!";
+                return;
+            }
+            try {
+                const res = await fetch(`/api/business/${bizId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('store-name').innerText = data.name;
+                    googleLink = data.googleReviewLink;
+                } else {
+                    document.getElementById('store-name').innerText = "Store not found.";
+                }
+            } catch (e) { console.error(e); }
+        }
+        fetchStore();
+
+        const stars = document.querySelectorAll('.star');
+        const form = document.getElementById('review-form');
+        const hint = document.getElementById('star-hint');
+
+        stars.forEach(s => {
+            s.onclick = () => {
+                selectedRating = parseInt(s.dataset.val);
+                stars.forEach((st, i) => st.classList.toggle('active', i < selectedRating));
+                
+                if (selectedRating >= 4) {
+                    hint.innerText = "We are glad you liked us!";
+                    if (googleLink) {
+                        alert("Thank you! Opening our official Google Review page...");
+                        window.location.href = googleLink;
+                    } else {
+                        alert("Google review link not available.");
+                    }
+                } else {
+                    hint.innerText = "We are sorry! Help us improve.";
+                    form.classList.add('visible');
+                }
+            };
+        });
+
+        async function submitFeedback() {
+            const name = document.getElementById('cust-name').value;
+            const phone = document.getElementById('cust-phone').value;
+            const comment = document.getElementById('cust-comment').value;
+
+            if(!name || !phone || !comment) {
+                alert("Please fill all fields.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        businessId: bizId, 
+                        customerName: name, 
+                        customerPhone: phone, 
+                        comment, 
+                        rating: selectedRating 
+                    })
+                });
+                
+                if(response.ok) {
+                    document.getElementById('feedback-view').style.display = 'none';
+                    document.getElementById('success-view').classList.add('visible');
+                }
+            } catch(e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>
