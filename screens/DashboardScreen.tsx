@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   View,
   Image,
-  Alert,
 } from 'react-native';
+import { PrivateReview } from '../App';
 
 const COLORS = {
   primary: '#0066FF',
@@ -18,27 +18,24 @@ const COLORS = {
   mediumGray: '#999999',
   darkGray: '#333333',
   lightBorder: '#E8E8E8',
-  lightGreen: '#E8F5E9',
   green: '#4CAF50',
-  lightYellow: '#FFF8E1',
+  error: '#EF5350',
 };
 
 interface DashboardScreenProps {
-  onLogout?: () => void;
+  reviews: PrivateReview[];
   onScreenChange?: (screen: string) => void;
+  logo?: string;
 }
 
-export function DashboardScreen({ onLogout, onScreenChange }: DashboardScreenProps) {
-  const [activeTab, setActiveTab] = useState('dashboard');
-
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    }
-  };
+export function DashboardScreen({ reviews, onScreenChange, logo }: DashboardScreenProps) {
+  
+  const totalReviews = reviews.length;
+  const avgRating = totalReviews > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
+    : '0';
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
     if (onScreenChange) {
       onScreenChange(tab);
     }
@@ -51,422 +48,151 @@ export function DashboardScreen({ onLogout, onScreenChange }: DashboardScreenPro
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Profile Icon on Top Right */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Review Dashboard</Text>
-            <Text style={styles.headerSubtitle}>ShopReviews Pro</Text>
+            <Text style={styles.headerSubtitle}>Pro Management</Text>
           </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Text style={styles.bellIcon}>🔔</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={handleLogout}
-            >
-              <Image
-                source={{
-                  uri: 'https://i.pravatar.cc/150?img=1',
-                }}
-                style={styles.profileImage}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.profileIconButton}
+            onPress={() => handleTabChange('settings')}
+          >
+            {logo ? (
+               <Image source={{ uri: logo }} style={styles.profileLogo} />
+            ) : (
+               <Text style={styles.profileEmoji}>👤</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Stats Cards */}
+        {/* Stats Summary */}
         <View style={styles.statsContainer}>
-          {/* QR Scans Card */}
           <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statLabel}>Total QR Scans</Text>
-              <Text style={styles.qrIcon}>📱</Text>
-            </View>
-            <Text style={styles.statValue}>1,285</Text>
-            <View style={styles.statChange}>
-              <Text style={styles.increaseArrow}>↑</Text>
-              <Text style={styles.increaseText}> 8.2% </Text>
-              <Text style={styles.changeText}>vs last week</Text>
-            </View>
+            <Text style={styles.statLabel}>Captured (1-3★)</Text>
+            <Text style={styles.statValue}>{totalReviews}</Text>
+            <Text style={styles.statHint}>Action Required</Text>
           </View>
 
-          {/* Reviews Card */}
           <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statLabel}>Total Reviews</Text>
-              <Text style={styles.chatIcon}>💬</Text>
-            </View>
-            <Text style={styles.statValue}>432</Text>
-            <View style={styles.statChange}>
-              <Text style={styles.increaseArrow}>↑</Text>
-              <Text style={styles.increaseText}> 12.5% </Text>
-              <Text style={styles.changeText}>vs last week</Text>
-            </View>
+            <Text style={styles.statLabel}>Avg captured rating</Text>
+            <Text style={styles.statValue}>{avgRating} ★</Text>
+            <Text style={styles.statHint}>Internal Score</Text>
           </View>
         </View>
 
-        {/* Rating Breakdown */}
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => handleTabChange('qrcodes')}
+            >
+              <Text style={styles.actionIcon}>📱</Text>
+              <Text style={styles.actionLabel}>Manage QR</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => handleTabChange('reviews')}
+            >
+              <Text style={styles.actionIcon}>💬</Text>
+              <Text style={styles.actionLabel}>View Reviews</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Recent Captured Reviews */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Rating Breakdown</Text>
-            <Text style={styles.timePeriod}>Last 30 days</Text>
-          </View>
-
-          <View style={styles.ratingContainer}>
-            {/* 5 Star */}
-            <View style={[styles.ratingCard, styles.ratingCardGreen]}>
-              <View style={styles.ratingTop}>
-                <Text style={styles.starIcon}>⭐</Text>
-                <Text style={styles.ratingLabel}>5★</Text>
-              </View>
-              <Text style={styles.ratingCount}>287</Text>
-              <Text style={styles.ratingText}>Reviews</Text>
-              <Text style={styles.ratingPercent}>66.4% of total</Text>
-            </View>
-
-            {/* 1-4 Star */}
-            <View style={styles.ratingCard}>
-              <View style={styles.ratingTop}>
-                <Text style={styles.emptyStarIcon}>☆</Text>
-                <Text style={styles.ratingLabel}>1-4★</Text>
-              </View>
-              <Text style={styles.ratingCount}>145</Text>
-              <Text style={styles.ratingText}>Reviews</Text>
-              <Text style={styles.ratingPercent}>33.6% of total</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Recent Reviews */}
-        <View style={styles.section}>
-          <View style={styles.recentHeader}>
-            <Text style={styles.sectionTitle}>Recent Reviews</Text>
-            <TouchableOpacity>
+            <Text style={styles.sectionTitle}>Recent Negative Experience</Text>
+            <TouchableOpacity onPress={() => handleTabChange('reviews')}>
               <Text style={styles.viewAllLink}>View All</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.reviewCard}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.starsContainer}>
-                <Text style={styles.starEmoji}>⭐⭐⭐⭐⭐</Text>
-              </View>
-              <Text style={styles.reviewTime}>2 hours ago</Text>
+          {reviews.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>No negative feedback captured yet. That's good!</Text>
             </View>
-            <Text style={styles.reviewText}>
-              "Great service and product quality! The staff was very helpful and
-              knowledgeable. Will definitely come back."
-            </Text>
-          </View>
+          ) : (
+            reviews.slice(0, 3).map((review) => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.customerName}>{review.customerName}</Text>
+                  <Text style={styles.ratingBadge}>{review.rating} ★</Text>
+                </View>
+                <Text style={styles.reviewSnippet} numberOfLines={2}>
+                  "{review.comment}"
+                </Text>
+              </View>
+            ))
+          )}
         </View>
 
-        {/* Bottom spacing */}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <NavItem
-          icon="📊"
-          label="Dashboard"
-          active={activeTab === 'dashboard'}
-          onPress={() => handleTabChange('dashboard')}
-        />
-        <NavItem
-          icon="📱"
-          label="QR Codes"
-          active={activeTab === 'qrcodes'}
-          onPress={() => handleTabChange('qrcodes')}
-        />
-        <NavItem
-          icon="💬"
-          label="Reviews"
-          active={activeTab === 'reviews'}
-          onPress={() => handleTabChange('reviews')}
-        />
-        <NavItem
-          icon="⚙️"
-          label="Settings"
-          active={activeTab === 'settings'}
-          onPress={() => handleTabChange('settings')}
-        />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('dashboard')}>
+          <Text style={[styles.navIcon, {color: COLORS.primary}]}>📊</Text>
+          <Text style={[styles.navLabel, {color: COLORS.primary}]}>Dashboard</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('qrcodes')}>
+          <Text style={styles.navIcon}>📱</Text>
+          <Text style={styles.navLabel}>QR Codes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('reviews')}>
+          <Text style={styles.navIcon}>💬</Text>
+          <Text style={styles.navLabel}>Reviews</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('settings')}>
+          <Text style={styles.navIcon}>⚙️</Text>
+          <Text style={styles.navLabel}>Settings</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-interface NavItemProps {
-  icon: string;
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function NavItem({ icon, label, active, onPress }: NavItemProps) {
-  return (
-    <TouchableOpacity
-      style={styles.navItem}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.navIcon}>{icon}</Text>
-      <Text
-        style={[
-          styles.navLabel,
-          active && styles.navLabelActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
+  container: { flex: 1, backgroundColor: COLORS.white },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.darkGray },
+  headerSubtitle: { fontSize: 14, color: COLORS.mediumGray, marginTop: 2 },
+  profileIconButton: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.lightGray,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.lightBorder, overflow: 'hidden'
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 80,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-    marginTop: 2,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.lightGray,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bellIcon: {
-    fontSize: 20,
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 12,
-    padding: 16,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.mediumGray,
-  },
-  qrIcon: {
-    fontSize: 20,
-  },
-  chatIcon: {
-    fontSize: 20,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 8,
-  },
-  statChange: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  increaseArrow: {
-    fontSize: 16,
-    color: COLORS.green,
-    fontWeight: '700',
-  },
-  increaseText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.green,
-  },
-  changeText: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-  },
-  timePeriod: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  ratingCard: {
-    flex: 1,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  ratingCardGreen: {
-    backgroundColor: COLORS.lightGreen,
-  },
-  ratingTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  starIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
-  emptyStarIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
-  ratingLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.mediumGray,
-  },
-  ratingCount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 4,
-  },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.mediumGray,
-  },
-  ratingPercent: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-    marginTop: 2,
-  },
-  recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  viewAllLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  reviewCard: {
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 12,
-    padding: 16,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-  },
-  starEmoji: {
-    fontSize: 16,
-  },
-  reviewTime: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-  },
-  reviewText: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.darkGray,
-    lineHeight: 20,
-  },
-  bottomSpacing: {
-    height: 20,
-  },
+  profileLogo: { width: 44, height: 44 },
+  profileEmoji: { fontSize: 22 },
+  statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 32 },
+  statCard: { flex: 1, backgroundColor: '#EEF4FF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#D0E1FF' },
+  statLabel: { fontSize: 12, fontWeight: '700', color: COLORS.primary, marginBottom: 8 },
+  statValue: { fontSize: 24, fontWeight: '800', color: COLORS.darkGray, marginBottom: 4 },
+  statHint: { fontSize: 10, color: COLORS.mediumGray },
+  section: { marginBottom: 32 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.darkGray, marginBottom: 16 },
+  actionsGrid: { flexDirection: 'row', gap: 12 },
+  actionCard: { flex: 1, backgroundColor: COLORS.lightGray, borderRadius: 16, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: COLORS.lightBorder },
+  actionIcon: { fontSize: 28, marginBottom: 8 },
+  actionLabel: { fontSize: 14, fontWeight: '700', color: COLORS.darkGray },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  viewAllLink: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  reviewCard: { backgroundColor: COLORS.white, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.lightBorder, marginBottom: 12 },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  customerName: { fontSize: 16, fontWeight: '700', color: COLORS.darkGray },
+  ratingBadge: { color: COLORS.error, fontWeight: '700' },
+  reviewSnippet: { fontSize: 14, color: COLORS.mediumGray, fontStyle: 'italic' },
+  emptyCard: { padding: 40, alignItems: 'center', backgroundColor: COLORS.lightGray, borderRadius: 16 },
+  emptyCardText: { color: COLORS.mediumGray, textAlign: 'center' },
   bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.lightBorder,
-    paddingBottom: 8,
+    position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row',
+    backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightBorder, paddingVertical: 12, paddingBottom: 20,
   },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  navIcon: {
-    fontSize: 22,
-    marginBottom: 4,
-  },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: COLORS.mediumGray,
-  },
-  navLabelActive: {
-    color: COLORS.primary,
-  },
+  navItem: { flex: 1, alignItems: 'center' },
+  navIcon: { fontSize: 20 },
+  navLabel: { fontSize: 10, color: COLORS.mediumGray, marginTop: 4, fontWeight: '600' },
 });

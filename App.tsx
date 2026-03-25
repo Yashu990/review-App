@@ -1,331 +1,241 @@
 /**
- * ShopReviews Pro - Main App Navigation
- * Collect & analyze customer feedback
- * @format
+ * Review Boost App - Main Entry Point (Connected to Backend)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Screens
 import { DashboardScreen } from './screens/DashboardScreen';
 import { QRCodesScreen } from './screens/QRCodesScreen';
 import { ReviewsScreen } from './screens/ReviewsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { CustomerReviewScreen } from './screens/CustomerReviewScreen';
+import { LoginScreen } from './screens/LoginScreen';
+
+const API_BASE = 'http://192.168.1.9:5000/api';
 
 const COLORS = {
   primary: '#0066FF',
   white: '#FFFFFF',
-  lightGray: '#F5F5F5',
-  mediumGray: '#999999',
-  darkGray: '#333333',
-  lightBorder: '#E8E8E8',
 };
+
+// Types
+export interface Business {
+  id: string;
+  name: string;
+  ownerName: string;
+  ownerPhone: string;
+  googleReviewLink: string;
+  email?: string;
+  password?: string;
+  logo?: string;
+}
+
+export interface PrivateReview {
+  id: string;
+  businessId: string;
+  customerName: string;
+  customerPhone: string;
+  comment: string;
+  rating: number;
+  timestamp: number;
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
+  
+  // Data State
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [privateReviews, setPrivateReviews] = useState<PrivateReview[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simulate login - in real app, validate credentials with backend
-    if (email && password) {
-      setIsLoggedIn(true);
-      setCurrentScreen('dashboard');
+  // Initial Sync from Backend instead of local only
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const stored = await AsyncStorage.getItem('isLoggedIn');
+      const storedBiz = await AsyncStorage.getItem('activeBusinessId');
+      if (stored === 'true' && storedBiz) {
+        setIsLoggedIn(true);
+        setSelectedBusinessId(storedBiz);
+        fetchData(storedBiz);
+      }
+    };
+    checkAuthStatus();
+  }, []);
+
+  const fetchData = async (bizId: string) => {
+    try {
+      // 1. Fetch Business Profile
+      const bizRes = await fetch(`${API_BASE}/business/${bizId}`);
+      if (bizRes.ok) {
+        const data = await bizRes.json();
+        // Since the backend returns {name, googleReviewLink}, we merge it
+        setBusinesses([{ id: bizId, ...data }]);
+      }
+
+      // 2. Fetch Reviews from Backend
+      const revRes = await fetch(`${API_BASE}/reviews/business/${bizId}`);
+      if (revRes.ok) {
+        const data = await revRes.json();
+        setPrivateReviews(data.map((r: any) => ({ ...r, id: r._id, timestamp: new Date(r.createdAt).getTime() })));
+      }
+    } catch (e) {
+      console.log('Sync error:', e);
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentScreen('dashboard');
+  const handleRegisterBusiness = async (business: Business) => {
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(business),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const bizId = data.business._id;
+        setBusinesses([ { ...business, id: bizId } ]);
+        setSelectedBusinessId(bizId);
+        setIsLoggedIn(true);
+        setCurrentScreen('dashboard');
+        
+        await AsyncStorage.setItem('isLoggedIn', 'true');
+        await AsyncStorage.setItem('activeBusinessId', bizId);
+      } else {
+        Alert.alert('Error', 'Registration failed. Email might be taken.');
+      }
+    } catch (e) { Alert.alert('Error', 'Could not connect to server.'); }
   };
 
-  const handleScreenChange = (screen: string) => {
-    setCurrentScreen(screen);
+  const handleLogin = async (email: string, pass: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const bizId = data.business._id;
+        setBusinesses([{ ...data.business, id: bizId }]);
+        setSelectedBusinessId(bizId);
+        setIsLoggedIn(true);
+        setCurrentScreen('dashboard');
+        
+        await AsyncStorage.setItem('isLoggedIn', 'true');
+        await AsyncStorage.setItem('activeBusinessId', bizId);
+        fetchData(bizId);
+      } else {
+        Alert.alert('Login Failed', 'Invalid email or password.');
+      }
+    } catch (e) { Alert.alert('Error', 'Could not connect to backend.'); }
+  };
+
+  const handleUpdateProfile = async (updatedBiz: Business) => {
+    try {
+      const res = await fetch(`${API_BASE}/business/${updatedBiz.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBiz),
+      });
+      if (res.ok) {
+        setBusinesses([updatedBiz]);
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggedIn(false);
+    setCurrentScreen('dashboard');
+    await AsyncStorage.clear();
+  };
+
+  const renderScreen = () => {
+    // Customer Preview (internal review)
+    if (currentScreen === 'customer_review' && selectedBusinessId) {
+      const business = businesses[0];
+      if (business) {
+        return (
+          <CustomerReviewScreen
+            businessName={business.name}
+            googleReviewLink={business.googleReviewLink}
+            onSubmitPrivateReview={async (data) => {
+               // Post feedback to real backend
+               await fetch(`${API_BASE}/reviews`, {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({...data, businessId: business.id, customerPhone: data.number}),
+               });
+               fetchData(business.id); // Refresh owner list
+            }}
+            onGoBack={() => setCurrentScreen('dashboard')}
+          />
+        );
+      }
+    }
+
+    if (!isLoggedIn) {
+      return <LoginScreen onRegister={handleRegisterBusiness} onLogin={handleLogin} />;
+    }
+
+    switch (currentScreen) {
+      case 'dashboard':
+        return <DashboardScreen 
+          reviews={privateReviews} 
+          onScreenChange={setCurrentScreen} 
+          logo={businesses[0]?.logo}
+        />;
+      case 'qrcodes':
+        return <QRCodesScreen 
+          businesses={businesses}
+          onSelectBusiness={(id) => {
+            setSelectedBusinessId(id);
+            setCurrentScreen('customer_review');
+          }}
+          onScreenChange={setCurrentScreen} 
+        />;
+      case 'reviews':
+        return <ReviewsScreen 
+          reviews={privateReviews} 
+          businesses={businesses}
+          onScreenChange={setCurrentScreen} 
+        />;
+      case 'settings':
+        return <SettingsScreen 
+          business={businesses[0]} 
+          onLogout={handleLogout}
+          onScreenChange={setCurrentScreen}
+          onUpdateBusiness={handleUpdateProfile}
+        />;
+      default:
+        return <DashboardScreen 
+          reviews={privateReviews} 
+          onScreenChange={setCurrentScreen} 
+          logo={businesses[0]?.logo}
+        />;
+    }
   };
 
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      {isLoggedIn ? (
-        currentScreen === 'dashboard' ? (
-          <DashboardScreen onLogout={handleLogout} onScreenChange={handleScreenChange} />
-        ) : currentScreen === 'qrcodes' ? (
-          <QRCodesScreen onLogout={handleLogout} onScreenChange={handleScreenChange} />
-        ) : currentScreen === 'reviews' ? (
-          <ReviewsScreen onLogout={handleLogout} onScreenChange={handleScreenChange} />
-        ) : currentScreen === 'settings' ? (
-          <SettingsScreen onLogout={handleLogout} onScreenChange={handleScreenChange} />
-        ) : (
-          <DashboardScreen onLogout={handleLogout} onScreenChange={handleScreenChange} />
-        )
-      ) : (
-        <LoginScreen onLogin={handleLogin} />
-      )}
+      {renderScreen()}
     </SafeAreaProvider>
   );
 }
-
-function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleLogin = () => {
-    onLogin(email, password);
-  };
-
-  const handleGoogleLogin = () => {
-    // Handle Google login
-    console.log('Google login pressed');
-  };
-
-  const handleForgotPassword = () => {
-    // Handle forgot password
-    console.log('Forgot password pressed');
-  };
-
-  const handleSignUp = () => {
-    // Handle sign up navigation
-    console.log('Sign up pressed');
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>💬</Text>
-          </View>
-          <Text style={styles.appTitle}>ShopReviews Pro</Text>
-          <Text style={styles.appSubtitle}>Collect & analyze customer feedback</Text>
-        </View>
-
-        {/* Form Section */}
-        <View style={styles.formSection}>
-          {/* Email/Phone Input */}
-          <TextInput
-            style={styles.input}
-            placeholder="Phone Number or Email"
-            placeholderTextColor={COLORS.mediumGray}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            editable
-          />
-
-          {/* Password Input */}
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={COLORS.mediumGray}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {/* Login Button */}
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.loginButtonText}>Login →</Text>
-          </TouchableOpacity>
-
-          {/* Forgot Password */}
-          <TouchableOpacity onPress={handleForgotPassword}>
-            <Text style={styles.forgotPassword}>Forgot Password?</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.dividerSection}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or continue with</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Social Login */}
-        <TouchableOpacity
-          style={styles.googleButton}
-          onPress={handleGoogleLogin}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.googleIcon}>G</Text>
-          <Text style={styles.googleText}>Google</Text>
-        </TouchableOpacity>
-
-        {/* Sign Up Link */}
-        <View style={styles.signUpSection}>
-          <Text style={styles.signUpText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={handleSignUp}>
-            <Text style={styles.signUpLink}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Legal Text */}
-        <View style={styles.legalSection}>
-          <Text style={styles.legalText}>
-            By logging in, you agree to our{' '}
-            <Text style={styles.legalLink}>Terms</Text> and{' '}
-            <Text style={styles.legalLink}>Privacy Policy</Text>
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 35,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoIcon: {
-    fontSize: 40,
-  },
-  appTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  appSubtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: COLORS.mediumGray,
-    textAlign: 'center',
-  },
-  formSection: {
-    marginBottom: 32,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.lightBorder,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 12,
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.darkGray,
-    backgroundColor: COLORS.lightGray,
-  },
-  loginButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  forgotPassword: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.primary,
-    textAlign: 'center',
-  },
-  dividerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.lightBorder,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 14,
-    color: COLORS.mediumGray,
-    fontWeight: '400',
-  },
-  googleButton: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: COLORS.lightBorder,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  googleIcon: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#EA4335',
-    marginRight: 8,
-  },
-  googleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-  },
-  signUpSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 32,
-  },
-  signUpText: {
-    fontSize: 14,
-    color: COLORS.mediumGray,
-    fontWeight: '400',
-  },
-  signUpLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  legalSection: {
-    marginTop: 'auto',
-  },
-  legalText: {
-    fontSize: 12,
-    color: COLORS.mediumGray,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  legalLink: {
-    color: COLORS.mediumGray,
-    textDecorationLine: 'underline',
-  },
-});
 
 export default App;
