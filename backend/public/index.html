@@ -3,140 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Feedback - Review Boost</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Give Feedback - Review Boost</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #0066FF; --text: #333; --light: #f9f9f9; }
-        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: var(--text); display: flex; justify-content: center; min-height: 100vh; }
-        .container { width: 100%; max-width: 500px; padding: 24px; box-sizing: border-box; }
-        .header { text-align: center; margin-bottom: 40px; margin-top: 40px; }
-        .stars { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
-        .star { font-size: 44px; color: #ddd; cursor: pointer; transition: 0.2s; }
-        .star.active { color: #FFD700; }
-        .form { display: none; flex-direction: column; gap: 16px; transition: 0.3s; opacity: 0; transform: translateY(20px); }
-        .form.visible { display: flex; opacity: 1; transform: translateY(0); }
-        label { font-weight: 600; font-size: 14px; margin-bottom: -10px; }
-        input, textarea { padding: 14px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; background: var(--light); font-family: inherit; outline: none; }
-        input:focus, textarea:focus { border-color: var(--primary); }
-        button { background: var(--primary); color: #fff; border: none; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-        .success { display: none; text-align: center; padding: 100px 20px; }
-        .success.visible { display: block; }
+        :root {
+            --primary: #FF5A8F; /* Pink accent from screenshot */
+            --bg: #EEF4FF; /* Light blue background */
+            --text-dark: #1A202C;
+            --text-gray: #718096;
+            --border: #E2E8F0;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .main-card {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+            margin: 20px;
+        }
+        .left-illustration {
+            width: 45%;
+            background-color: #f7f9fc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--border);
+        }
+        .left-illustration img {
+            max-width: 80%;
+            height: auto;
+        }
+        .right-content {
+            width: 55%;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #2D3748;
+        }
+        .subtitle {
+            font-size: 15px;
+            color: var(--text-gray);
+            margin-bottom: 24px;
+        }
+        .biz-accent {
+            color: #CC5DE8;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .stars-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+        .star {
+            font-size: 40px;
+            color: #CBD5E0;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .star.active {
+            color: #A0AEC0; /* Gray stars from screenshot? Wait, they look grayish in the screenshot until active */
+        }
+        .star.selected {
+            color: #A0AEC0; /* Screenshot uses gray/blue-gray active stars */
+        }
+        /* Overriding for a bit of gold/standard feel if needed, but following screenshot */
+        .star.selected { color: #A0AEC0; } 
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4A5568;
+        }
+        input, textarea {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            color: var(--text-dark);
+            font-family: inherit;
+            outline: none;
+            transition: 0.2s;
+        }
+        input:focus, textarea:focus {
+            border-color: #CC5DE8;
+            box-shadow: 0 0 0 3px rgba(204, 93, 232, 0.1);
+        }
+        .submit-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            width: fit-content;
+            min-width: 120px;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+        .submit-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        #review-form {
+            display: none;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .main-card {
+                flex-direction: column;
+                max-width: 95%; /* Better fit for small screens */
+                margin: 10px auto;
+                border-radius: 16px;
+            }
+            .left-illustration {
+                width: 100%;
+                padding: 30px 0;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .left-illustration img {
+                max-width: 60%;
+            }
+            .right-content {
+                width: 100%;
+                padding: 24px; /* More compact for mobile */
+                box-sizing: border-box;
+            }
+            h1 { font-size: 24px; }
+            .star { font-size: 34px; } /* Slightly smaller stars to prevent wrap */
+            .stars-container { gap: 8px; justify-content: space-between; }
+        }
+
+        /* Success View */
+        .success-view {
+            text-align: center;
+            padding: 60px 40px;
+        }
+        .success-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="feedback-view">
-            <div class="header">
-                <h1 style="margin:0; font-size: 28px;">Customer Feedback</h1>
-                <p id="store-name" style="color: #999; margin-top: 5px;">Finding store...</p>
-            </div>
-
-            <div class="stars" id="star-container">
-                <span class="star" data-val="1">★</span>
-                <span class="star" data-val="2">★</span>
-                <span class="star" data-val="3">★</span>
-                <span class="star" data-val="4">★</span>
-                <span class="star" data-val="5">★</span>
-            </div>
-
-            <p id="star-hint" style="text-align: center; font-weight: 600; color: var(--primary); margin-bottom: 20px;">Tap to rate</p>
-
-            <div class="form" id="review-form">
-                <label>Your Full Name</label>
-                <input type="text" id="cust-name" placeholder="John Doe">
-                <label>Mobile Number (for our manager to solve issues)</label>
-                <input type="tel" id="cust-phone" placeholder="+91 0000000000">
-                <label>Tell use how we can improve</label>
-                <textarea id="cust-comment" rows="4" placeholder="Share your experience..."></textarea>
-                <button onclick="submitFeedback()">Send Feedback</button>
-            </div>
+    <div class="main-card">
+        <!-- Left Side: Illustration -->
+        <div class="left-illustration">
+            <img src="/assets/feedback.png" alt="Feedback">
         </div>
 
-        <div class="success" id="success-view">
-            <h1 style="font-size: 50px;">✅</h1>
-            <h2 style="font-size: 24px;">Thank You!</h2>
-            <p id="success-msg" style="color: #666; font-size: 16px;">We value your feedback. Our team will look into this immediately.</p>
+        <!-- Right Side: Content -->
+        <div class="right-content" id="form-container">
+            <div id="initial-view">
+                <h1>Give feedback</h1>
+                <p class="subtitle" id="biz-question">What are your thoughts on the experience with <span class="biz-accent" id="biz-name-display">Loading...</span>?</p>
+                
+                <div class="stars-container" id="star-row">
+                    <span class="star" data-val="1">★</span>
+                    <span class="star" data-val="2">★</span>
+                    <span class="star" data-val="3">★</span>
+                    <span class="star" data-val="4">★</span>
+                    <span class="star" data-val="5">★</span>
+                </div>
+            </div>
+
+            <div id="review-form">
+                <div class="form-group">
+                    <label>Your Name:</label>
+                    <input type="text" id="name" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label>Your Number:</label>
+                    <input type="tel" id="phone" placeholder="Enter your phone number">
+                </div>
+                <div class="form-group">
+                    <label>What are the main reasons for your rating?</label>
+                    <textarea id="reason" rows="4" placeholder="Your feedback reason"></textarea>
+                </div>
+                <button class="submit-btn" onclick="submitFeedback()">Submit</button>
+            </div>
+
+            <!-- Success State -->
+            <div class="success-view hidden" id="success-view">
+                <div class="success-icon">✅</div>
+                <h2>Feedback Submitted!</h2>
+                <p>Thank you for helping us improve our services.</p>
+            </div>
         </div>
     </div>
 
     <script>
-        let selectedRating = 0;
+        let selectedStars = 0;
         let googleLink = "";
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const bizId = urlParams.get('id');
+        const params = new URLSearchParams(window.location.search);
+        const bizId = params.get('businessId') || params.get('id'); // Support both
 
-        // Fetch Store Details from Backend
-        async function fetchStore() {
+        // Fetch Business Details
+        async function fetchBizInfo() {
             if (!bizId) {
-                document.getElementById('store-name').innerText = "Store ID missing in link!";
+                document.getElementById('biz-name-display').innerText = "Unknown Business";
                 return;
             }
             try {
                 const res = await fetch(`/api/business/${bizId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    document.getElementById('store-name').innerText = data.name;
+                    document.getElementById('biz-name-display').innerText = data.name;
                     googleLink = data.googleReviewLink;
-                } else {
-                    document.getElementById('store-name').innerText = "Store not found.";
                 }
             } catch (e) { console.error(e); }
         }
-        fetchStore();
+        fetchBizInfo();
 
+        // Star Selection
         const stars = document.querySelectorAll('.star');
         const form = document.getElementById('review-form');
-        const hint = document.getElementById('star-hint');
 
         stars.forEach(s => {
-            s.onclick = () => {
-                selectedRating = parseInt(s.dataset.val);
-                stars.forEach((st, i) => st.classList.toggle('active', i < selectedRating));
-                
-                if (selectedRating >= 4) {
-                    hint.innerText = "We are glad you liked us!";
+            s.addEventListener('click', () => {
+                selectedStars = parseInt(s.dataset.val);
+                stars.forEach((st, idx) => {
+                    st.classList.toggle('selected', idx < selectedStars);
+                });
+
+                if (selectedStars >= 4) {
                     if (googleLink) {
-                        alert("Thank you! Opening our official Google Review page...");
+                        alert("We're glad you liked us! Opening our Google Review page...");
                         window.location.href = googleLink;
                     } else {
-                        alert("Google review link not available.");
+                        // If no link, show form anyway
+                        form.style.display = 'flex';
                     }
                 } else {
-                    hint.innerText = "We are sorry! Help us improve.";
-                    form.classList.add('visible');
+                    form.style.display = 'flex';
+                    form.scrollIntoView({ behavior: 'smooth' });
                 }
-            };
+            });
+
+            s.addEventListener('mouseover', () => {
+                const val = parseInt(s.dataset.val);
+                stars.forEach((st, idx) => {
+                    st.style.color = idx < val ? '#A0AEC0' : '#CBD5E0';
+                });
+            });
+
+            s.addEventListener('mouseout', () => {
+                stars.forEach((st, idx) => {
+                    st.style.color = idx < selectedStars ? '#A0AEC0' : '#CBD5E0';
+                });
+            });
         });
 
+        // Submit Logic
         async function submitFeedback() {
-            const name = document.getElementById('cust-name').value;
-            const phone = document.getElementById('cust-phone').value;
-            const comment = document.getElementById('cust-comment').value;
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const reason = document.getElementById('reason').value;
 
-            if(!name || !phone || !comment) {
-                alert("Please fill all fields.");
+            if (!name || !phone || !reason) {
+                alert("Please fill in all details.");
                 return;
             }
 
             try {
-                const response = await fetch('/api/reviews', {
+                const res = await fetch('/api/reviews', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        businessId: bizId, 
-                        customerName: name, 
-                        customerPhone: phone, 
-                        comment, 
-                        rating: selectedRating 
+                    body: JSON.stringify({
+                        businessId: bizId,
+                        customerName: name,
+                        customerPhone: phone,
+                        comment: reason,
+                        rating: selectedStars
                     })
                 });
-                
-                if(response.ok) {
-                    document.getElementById('feedback-view').style.display = 'none';
-                    document.getElementById('success-view').classList.add('visible');
+
+                if (res.ok) {
+                    document.getElementById('initial-view').classList.add('hidden');
+                    document.getElementById('review-form').classList.add('hidden');
+                    document.getElementById('success-view').classList.remove('hidden');
                 }
-            } catch(e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                alert("Error submitting feedback. Please try again.");
+            }
         }
     </script>
 </body>

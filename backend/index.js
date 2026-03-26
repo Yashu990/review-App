@@ -1,10 +1,10 @@
+require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const sequelize = require('./config/database');
+const Business = require('./models/Business');
+const Review = require('./models/Review');
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -13,37 +13,48 @@ app.use(cors());
 // Serve Static Dummy Page
 app.use(express.static(path.join(__dirname, 'public')));
 
-// DB Connection
-const DB_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/review_boost_db';
-mongoose.connect(DB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('DB Connection Error:', err));
+// DB Connection & Sync with force: true to reset IDs to Serial for your demo
+// NOTE: Use force: false for production!
+sequelize.authenticate()
+  .then(() => {
+    console.log('PostgreSQL Connected via Sequelize');
+    // Set force: false to keep your data across restarts!
+    return sequelize.sync({ force: false }); 
+  })
+  .then(() => console.log('Database Synced'))
+  .catch(err => console.error('PostgreSQL Connection/Sync Error:', err));
+
+// --- Pages ---
+// Serve landing page at /rate-us
+app.get('/rate-us', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve Static Assets (Illustrations, etc.)
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 
 // --- API Endpoints ---
 
-// Get Business info for Dummy Page (to get real google link and store name)
 app.get('/api/business/:id', async (req, res) => {
   try {
-    const Business = require('./models/Business');
-    const biz = await Business.findById(req.params.id);
+    const bizId = req.params.id;
+    const biz = await Business.findByPk(bizId);
     if (!biz) return res.status(404).json({ error: 'Store not found' });
-    res.json({ name: biz.name, googleReviewLink: biz.googleReviewLink });
+    res.json({ name: biz.name, googleReviewLink: biz.googleReviewLink, logo: biz.logo, ownerName: biz.ownerName, ownerPhone: biz.ownerPhone });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Register Business
 app.post('/api/register', async (req, res) => {
   try {
-    const Business = require('./models/Business');
-    const { name, ownerName, ownerPhone, googleReviewLink, email, password } = req.body;
-    let existing = await Business.findOne({ email });
+    const { id, _id, name, ownerName, ownerPhone, googleReviewLink, email, password } = req.body;
+    let existing = await Business.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: 'User exists' });
-    const newBiz = new Business({ name, ownerName, ownerPhone, googleReviewLink, email, password });
-    await newBiz.save();
+    const newBiz = await Business.create({ name, ownerName, ownerPhone, googleReviewLink, email, password });
     res.status(201).json({ business: newBiz });
   } catch (err) {
+    console.error('Registration Error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -51,9 +62,8 @@ app.post('/api/register', async (req, res) => {
 // Login
 app.post('/api/login', async (req, res) => {
   try {
-    const Business = require('./models/Business');
     const { email, password } = req.body;
-    const biz = await Business.findOne({ email, password });
+    const biz = await Business.findOne({ where: { email, password } });
     if (!biz) return res.status(401).json({ error: 'Invalid credentials' });
     res.json({ business: biz });
   } catch (err) {
@@ -61,41 +71,49 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Update Business Details
 app.patch('/api/business/:id', async (req, res) => {
   try {
-    const Business = require('./models/Business');
-    const { id, _id, ...updateData } = req.body; // Protect internal IDs from being updated
-    const updated = await Business.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Store not found' });
+    const bizId = req.params.id;
+    const { id, _id, ...updateData } = req.body;
+    const [rowsUpdated] = await Business.update(updateData, { where: { id: bizId } });
+    if (rowsUpdated === 0) return res.status(404).json({ error: 'Store not found' });
+    const updated = await Business.findByPk(bizId);
     res.json({ business: updated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Capture Review
 app.post('/api/reviews', async (req, res) => {
   try {
-    const Review = require('./models/Review');
-    const newReview = new Review(req.body);
-    await newReview.save();
+    const { id, _id, ...reviewData } = req.body;
+    const newReview = await Review.create(reviewData);
     res.status(201).json({ message: 'Feedback Captured' });
   } catch (err) {
+    console.error('Review Error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get Reviews
 app.get('/api/reviews/business/:id', async (req, res) => {
   try {
-    const Review = require('./models/Review');
-    const reviews = await Review.find({ businessId: req.params.id }).sort({ createdAt: -1 });
+    const bizId = req.params.id;
+    const reviews = await Review.findAll({ 
+      where: { businessId: bizId }, 
+      order: [['createdAt', 'DESC']] 
+    });
     res.json(reviews);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Backend Live on http://localhost:${PORT}`));
+app.get('/health', (req, res) => {
+    res.json({ status: 'up', message: 'Backend is Live!', ip: '192.168.1.21' });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend Live and accessible at http://192.168.1.21:${PORT}`);
+    console.log(`Health check: http://192.168.1.21:${PORT}/health`);
+});

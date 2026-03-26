@@ -19,7 +19,8 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { CustomerReviewScreen } from './screens/CustomerReviewScreen';
 import { LoginScreen } from './screens/LoginScreen';
 
-const API_BASE = 'http://192.168.1.9:5000/api';
+// TO DEPLOY LIVE: Replace this IP with your server URL (e.g., https://your-app.herokuapp.com/api)
+const API_BASE = 'http://192.168.1.21:5000/api';
 
 const COLORS = {
   primary: '#0066FF',
@@ -85,7 +86,7 @@ function App() {
       const revRes = await fetch(`${API_BASE}/reviews/business/${bizId}`);
       if (revRes.ok) {
         const data = await revRes.json();
-        setPrivateReviews(data.map((r: any) => ({ ...r, id: r._id, timestamp: new Date(r.createdAt).getTime() })));
+        setPrivateReviews(data.map((r: any) => ({ ...r, id: r.id, timestamp: new Date(r.createdAt).getTime() })));
       }
     } catch (e) {
       console.log('Sync error:', e);
@@ -101,7 +102,7 @@ function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        const bizId = data.business._id;
+        const bizId = data.business.id;
         setBusinesses([ { ...business, id: bizId } ]);
         setSelectedBusinessId(bizId);
         setIsLoggedIn(true);
@@ -125,7 +126,7 @@ function App() {
       
       if (res.ok) {
         const data = await res.json();
-        const bizId = data.business._id;
+        const bizId = data.business.id;
         setBusinesses([{ ...data.business, id: bizId }]);
         setSelectedBusinessId(bizId);
         setIsLoggedIn(true);

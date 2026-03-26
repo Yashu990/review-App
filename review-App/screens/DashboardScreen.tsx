@@ -30,9 +30,10 @@ interface DashboardScreenProps {
 
 export function DashboardScreen({ reviews, onScreenChange, logo }: DashboardScreenProps) {
   
-  const totalReviews = reviews.length;
-  const avgRating = totalReviews > 0 
-    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
+  const negativeReviews = reviews.filter(r => r.rating <= 3);
+  const totalReviews = negativeReviews.length;
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : '0';
 
   const handleTabChange = (tab: string) => {
