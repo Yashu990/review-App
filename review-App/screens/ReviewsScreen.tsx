@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -27,10 +28,18 @@ interface ReviewsScreenProps {
   reviews: PrivateReview[];
   businesses: Business[];
   onScreenChange: (screen: string) => void;
+  onRefresh?: () => void;
 }
 
-export function ReviewsScreen({ reviews, businesses, onScreenChange }: ReviewsScreenProps) {
-  
+export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }: ReviewsScreenProps) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (onRefresh) await onRefresh();
+    setRefreshing(false);
+  };
+
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert('Error', 'Unable to initiate call.');
@@ -49,19 +58,47 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange }: ReviewsSc
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Captured Feedback</Text>
             <Text style={styles.headerSubtitle}>Follow up with unhappy customers.</Text>
           </View>
           <TouchableOpacity 
             style={styles.profileIconButton}
-            onPress={() => onScreenChange('settings')}
+            onPress={() => onScreenChange?.('settings')}
           >
             <Text style={styles.profileEmoji}>👤</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Limit Indicator (Free Trial) ── */}
+        {(businesses[0]?.plan === 'Free Trial' || !businesses[0]?.plan) && (
+          <View style={styles.limitCard}>
+            <View style={styles.limitHeader}>
+              <Text style={styles.limitLabel}>Free Trial Usage</Text>
+              <Text style={styles.limitCount}>{reviews.length} / 5 Reviews</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${Math.min((reviews.length / 5) * 100, 100)}%` }]} />
+            </View>
+            {reviews.length >= 5 && (
+              <TouchableOpacity style={styles.upgradeNotice} onPress={() => onScreenChange?.('settings')}>
+                <Text style={styles.upgradeNoticeText}>⚠️ Limit reached! Upgrade to capture more. 🚀</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {reviews.length === 0 ? (
           <View style={styles.emptyState}>
@@ -180,4 +217,13 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, alignItems: 'center' },
   navIcon: { fontSize: 20 },
   navLabel: { fontSize: 10, color: COLORS.mediumGray, marginTop: 4, fontWeight: '600' },
+  // Limit Card
+  limitCard: { backgroundColor: '#F0F7FF', borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#D0E6FF' },
+  limitHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  limitLabel: { fontSize: 13, fontWeight: '700', color: COLORS.darkGray },
+  limitCount: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  progressBarBg: { height: 8, backgroundColor: '#E0EFFF', borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: COLORS.primary },
+  upgradeNotice: { marginTop: 12, backgroundColor: '#FFF4E5', padding: 10, borderRadius: 8, alignItems: 'center' },
+  upgradeNoticeText: { color: '#B76E00', fontSize: 12, fontWeight: '700' },
 });

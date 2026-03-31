@@ -319,6 +319,18 @@
                     document.getElementById('initial-view').classList.add('hidden');
                     document.getElementById('review-form').classList.add('hidden');
                     document.getElementById('success-view').classList.remove('hidden');
+                } else {
+                    const data = await res.json();
+                    if (data.upgradeRequired) {
+                        // Plan limit reached - show success anyway to the customer so they stay happy
+                        // but the business won't get the capture.
+                        document.getElementById('initial-view').classList.add('hidden');
+                        document.getElementById('review-form').classList.add('hidden');
+                        document.getElementById('success-view').classList.remove('hidden');
+                        console.warn("Business plan limit reached. Capture skipped.");
+                    } else {
+                        alert(data.error || "Error submitting feedback.");
+                    }
                 }
             } catch (e) {
                 console.error(e);

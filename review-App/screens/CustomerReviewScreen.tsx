@@ -92,6 +92,11 @@ export function CustomerReviewScreen({
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
+          {onGoBack && (
+            <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
+              <Text style={styles.backArrow}>← Back</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.title}>Send Feedback</Text>
           <Text style={styles.subtitle}>{businessName}</Text>
         </View>
@@ -183,6 +188,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     marginTop: 20,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  backArrow: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   title: {
     fontSize: 28,

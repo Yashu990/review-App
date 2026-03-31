@@ -7,40 +7,33 @@ const Business = sequelize.define('Business', {
     autoIncrement: true,
     primaryKey: true,
   },
-  name: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  ownerName: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  ownerPhone: {
+  name: { type: DataTypes.TEXT, allowNull: false },
+  ownerName: { type: DataTypes.TEXT, allowNull: false },
+  ownerPhone: { type: DataTypes.STRING, allowNull: false },
+  googleReviewLink: { type: DataTypes.TEXT, allowNull: false },
+  email: { type: DataTypes.STRING, allowNull: false, unique: true },
+  password: { type: DataTypes.STRING, allowNull: false },
+  logo: { type: DataTypes.TEXT, defaultValue: '' },
+
+  // ── Referral System ──────────────────────────────────
+  referralCode: {
     type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      is: /^\d{10}$/ // Ensures exactly 10 digits
-    }
-  },
-  googleReviewLink: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
     unique: true,
+    allowNull: true,
   },
-  password: {
+  referralCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  plan: {
     type: DataTypes.STRING,
-    allowNull: false,
+    defaultValue: 'Free Trial', // Choices: Free Trial, Basic, Standard, Premium
   },
-  logo: {
-    type: DataTypes.TEXT, // Using TEXT for potentially long Base64
-    defaultValue: '',
-  },
+  businessType: { type: DataTypes.STRING, defaultValue: 'Both' }, // In Person, Remotely, Both
+  privacyTier: { type: DataTypes.STRING, defaultValue: '5-star' }, // 5-star, 4-5-star
+  qrStyle: { type: DataTypes.STRING, defaultValue: 'default' },
 }, {
-  timestamps: true, // Includes createdAt/updatedAt
+  timestamps: true,
 });
 
 module.exports = Business;

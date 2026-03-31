@@ -31,8 +31,7 @@ interface QRCodesScreenProps {
 export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: QRCodesScreenProps) {
   
   const generateRealLink = (business: Business) => {
-    // TO DEPLOY LIVE: Replace "http://192.168.1.21:5000" with your live domain (e.g., https://app.reviewus.in)
-    const BASE_URL = "http://192.168.1.21:5000";
+    const BASE_URL = "http://103.142.175.170:7500"; // Live Server
     return `${BASE_URL}/rate-us?businessId=${business.id}`;
   };
 

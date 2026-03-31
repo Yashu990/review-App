@@ -9,7 +9,9 @@ import {
   View,
   Image,
 } from 'react-native';
-import { PrivateReview } from '../App';
+import QRCode from 'react-native-qrcode-svg';
+import { PrivateReview, Business } from '../App';
+import { SERVER_URL } from '../constants';
 
 const COLORS = {
   primary: '#0066FF',
@@ -23,13 +25,15 @@ const COLORS = {
 };
 
 interface DashboardScreenProps {
+  business?: Business;
   reviews: PrivateReview[];
   onScreenChange?: (screen: string) => void;
   logo?: string;
 }
 
-export function DashboardScreen({ reviews, onScreenChange, logo }: DashboardScreenProps) {
+export function DashboardScreen({ business, reviews, onScreenChange, logo }: DashboardScreenProps) {
   
+  const generateLink = () => `${SERVER_URL}/rate-us?businessId=${business?.id}`;
   const negativeReviews = reviews.filter(r => r.rating <= 3);
   const totalReviews = negativeReviews.length;
   const avgRating = reviews.length > 0 
@@ -53,7 +57,7 @@ export function DashboardScreen({ reviews, onScreenChange, logo }: DashboardScre
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Review Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Pro Management</Text>
+            <Text style={styles.headerSubtitle}>{business?.name || 'Pro Management'}</Text>
           </View>
           <TouchableOpacity 
             style={styles.profileIconButton}
@@ -66,6 +70,24 @@ export function DashboardScreen({ reviews, onScreenChange, logo }: DashboardScre
             )}
           </TouchableOpacity>
         </View>
+
+        {/* ── NEW: Instant QR Code Section ── */}
+        {business?.id && (
+          <View style={styles.qrQuickSection}>
+            <View style={styles.qrInfo}>
+              <Text style={styles.qrLabel}>Instant Review QR 🚀</Text>
+              <Text style={styles.qrSub}>Show this to your customer to get a review instantly!</Text>
+            </View>
+            <View style={styles.qrBox}>
+              <QRCode
+                value={generateLink()}
+                size={70}
+                color="black"
+                backgroundColor={COLORS.white}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Stats Summary */}
         <View style={styles.statsContainer}>
@@ -196,4 +218,22 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, alignItems: 'center' },
   navIcon: { fontSize: 20 },
   navLabel: { fontSize: 10, color: COLORS.mediumGray, marginTop: 4, fontWeight: '600' },
+  // QR Quick Section
+  qrQuickSection: { 
+    flexDirection: 'row', 
+    backgroundColor: COLORS.primary, 
+    borderRadius: 20, 
+    padding: 18, 
+    marginBottom: 32,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  qrInfo: { flex: 1, marginRight: 15 },
+  qrLabel: { color: COLORS.white, fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  qrSub: { color: '#ffffffcc', fontSize: 11, fontWeight: '500', lineHeight: 16 },
+  qrBox: { backgroundColor: COLORS.white, padding: 8, borderRadius: 12 },
 });

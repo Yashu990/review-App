@@ -18,9 +18,10 @@ import { ReviewsScreen } from './screens/ReviewsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { CustomerReviewScreen } from './screens/CustomerReviewScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { OnboardingScreen } from './screens/OnboardingScreen';
+import { API_BASE } from './constants';
 
-// TO DEPLOY LIVE: Replace this IP with your server URL (e.g., https://your-app.herokuapp.com/api)
-const API_BASE = 'http://192.168.1.21:5000/api';
+// Moved to constants.ts for central control
 
 const COLORS = {
   primary: '#0066FF',
@@ -37,6 +38,9 @@ export interface Business {
   email?: string;
   password?: string;
   logo?: string;
+  referralCode?: string;
+  referralCount?: number;
+  plan?: string;
 }
 
 export interface PrivateReview {
@@ -51,6 +55,7 @@ export interface PrivateReview {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   
   // Data State
@@ -63,6 +68,12 @@ function App() {
     const checkAuthStatus = async () => {
       const stored = await AsyncStorage.getItem('isLoggedIn');
       const storedBiz = await AsyncStorage.getItem('activeBusinessId');
+      const onboarded = await AsyncStorage.getItem('hasOnboarded');
+
+      if (!onboarded) {
+        setShowOnboarding(true);
+      }
+
       if (stored === 'true' && storedBiz) {
         setIsLoggedIn(true);
         setSelectedBusinessId(storedBiz);
@@ -72,17 +83,18 @@ function App() {
     checkAuthStatus();
   }, []);
 
+  const handleFinishOnboarding = async () => {
+    setShowOnboarding(false);
+    await AsyncStorage.setItem('hasOnboarded', 'true');
+  };
+
   const fetchData = async (bizId: string) => {
     try {
-      // 1. Fetch Business Profile
       const bizRes = await fetch(`${API_BASE}/business/${bizId}`);
       if (bizRes.ok) {
         const data = await bizRes.json();
-        // Since the backend returns {name, googleReviewLink}, we merge it
         setBusinesses([{ id: bizId, ...data }]);
       }
-
-      // 2. Fetch Reviews from Backend
       const revRes = await fetch(`${API_BASE}/reviews/business/${bizId}`);
       if (revRes.ok) {
         const data = await revRes.json();
@@ -95,25 +107,30 @@ function App() {
 
   const handleRegisterBusiness = async (business: Business) => {
     try {
+      const payload = {
+        ...business,
+        email: (business.email || '').toLowerCase().trim(),
+      };
       const res = await fetch(`${API_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(business),
+        body: JSON.stringify(payload),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        const bizId = data.business.id;
-        setBusinesses([ { ...business, id: bizId } ]);
+        const bizId = String(data.business.id);
+        setBusinesses([{ ...payload, id: bizId }]);
         setSelectedBusinessId(bizId);
         setIsLoggedIn(true);
         setCurrentScreen('dashboard');
-        
         await AsyncStorage.setItem('isLoggedIn', 'true');
         await AsyncStorage.setItem('activeBusinessId', bizId);
       } else {
-        Alert.alert('Error', 'Registration failed. Email might be taken.');
+        Alert.alert('Registration Failed', data.error || 'Please try again.');
       }
-    } catch (e) { Alert.alert('Error', 'Could not connect to server.'); }
+    } catch (e) {
+      Alert.alert('Error', 'Could not connect to server. Check your internet.');
+    }
   };
 
   const handleLogin = async (email: string, pass: string) => {
@@ -121,24 +138,24 @@ function App() {
       const res = await fetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
+        body: JSON.stringify({ email: email.toLowerCase().trim(), password: pass }),
       });
-      
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
-        const bizId = data.business.id;
+        const bizId = String(data.business.id);
         setBusinesses([{ ...data.business, id: bizId }]);
         setSelectedBusinessId(bizId);
         setIsLoggedIn(true);
         setCurrentScreen('dashboard');
-        
         await AsyncStorage.setItem('isLoggedIn', 'true');
         await AsyncStorage.setItem('activeBusinessId', bizId);
         fetchData(bizId);
       } else {
-        Alert.alert('Login Failed', 'Invalid email or password.');
+        Alert.alert('Login Failed', data.error || 'Invalid email or password.');
       }
-    } catch (e) { Alert.alert('Error', 'Could not connect to backend.'); }
+    } catch (e) {
+      Alert.alert('Error', 'Could not connect to server. Check your internet.');
+    }
   };
 
   const handleUpdateProfile = async (updatedBiz: Business) => {
@@ -166,6 +183,10 @@ function App() {
   };
 
   const renderScreen = () => {
+    if (showOnboarding) {
+       return <OnboardingScreen onFinish={handleFinishOnboarding} />;
+    }
+
     // Customer Preview (internal review)
     if (currentScreen === 'customer_review' && selectedBusinessId) {
       const business = businesses[0];
@@ -183,7 +204,7 @@ function App() {
                });
                fetchData(business.id); // Refresh owner list
             }}
-            onGoBack={() => setCurrentScreen('dashboard')}
+            onGoBack={() => setCurrentScreen('qrcodes')}
           />
         );
       }
@@ -196,6 +217,7 @@ function App() {
     switch (currentScreen) {
       case 'dashboard':
         return <DashboardScreen 
+          business={businesses[0]}
           reviews={privateReviews} 
           onScreenChange={setCurrentScreen} 
           logo={businesses[0]?.logo}
@@ -213,7 +235,8 @@ function App() {
         return <ReviewsScreen 
           reviews={privateReviews} 
           businesses={businesses}
-          onScreenChange={setCurrentScreen} 
+          onScreenChange={setCurrentScreen}
+          onRefresh={() => fetchData(selectedBusinessId!)}
         />;
       case 'settings':
         return <SettingsScreen 

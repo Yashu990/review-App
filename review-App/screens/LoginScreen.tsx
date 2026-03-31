@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -8,8 +8,18 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Image,
+  Dimensions,
+  StatusBar,
+  ActivityIndicator,
+  Keyboard,
+  BackHandler,
 } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { Business } from '../App';
+import { API_BASE } from '../constants';
+
+const { width, height } = Dimensions.get('window');
 
 const COLORS = {
   primary: '#0066FF',
@@ -26,237 +36,488 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
-  const [isRegistering, setIsRegistering] = useState(false);
-  
+  const [view, setView] = useState<'initial' | 'login' | 'register'>('initial');
+  const [regStep, setRegStep] = useState(0); 
+  // 0: Welcome Location, 1: Search, 2: Basic Account, 3: Business Type, 4: Private/Google toggle, 5: QR Selection
+
+  // Registration Data
+  const [bizName, setBizName] = useState('');
+  const [link, setLink] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [bizType, setBizType] = useState('Both'); // In Person, Remotely, Both
+  const [privacyTier, setPrivacyTier] = useState('5-star'); // 5-star, 4-5-star
+  const [qrStyle, setQrStyle] = useState('default');
+
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Register State
-  const [bizName, setBizName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [ownerPhone, setOwnerPhone] = useState('');
-  const [link, setLink] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
+  // Search State (moved to top to avoid hook violation)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleAction = () => {
-    if (isRegistering) {
-      if (!bizName || !ownerName || !ownerPhone || !link || !regEmail || !regPassword) {
-        Alert.alert('Incomplete Fields', 'Please provide ALL details including your account Email and Password.');
-        return;
+  useEffect(() => {
+    const onBackPress = () => {
+      if (view === 'register') {
+        if (regStep > 0) {
+          setRegStep(prev => prev - 1);
+          return true;
+        } else {
+          setView('initial');
+          return true;
+        }
+      } else if (view === 'login') {
+        setView('initial');
+        return true;
       }
-      onRegister({
-        id: Math.random().toString(36).substr(2, 9),
-        name: bizName,
-        ownerName: ownerName,
-        ownerPhone: ownerPhone,
-        googleReviewLink: link,
-        email: regEmail,
-        password: regPassword,
-      });
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [view, regStep]);
+
+  const handleFinalRegister = () => {
+    onRegister({
+      id: Math.random().toString(36).substr(2, 9),
+      name: bizName || 'New Business',
+      ownerName: ownerName || 'Owner',
+      ownerPhone: 'N/A', // Collected during Search simulation usually
+      googleReviewLink: link || 'https://google.com',
+      email: regEmail,
+      password: regPassword,
+      businessType: bizType,
+      privacyTier: privacyTier,
+      qrStyle: qrStyle,
+    } as any);
+  };
+
+  const nextRegStep = () => setRegStep(regStep + 1);
+  const prevRegStep = () => setRegStep(Math.max(0, regStep - 1));
+
+  // ──── MAIN VIEWS ────
+
+  if (view === 'initial') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.initialContent}>
+            <View style={styles.illustrationWrap}>
+               <View style={styles.storePlaceholder}>
+                  <Text style={{fontSize: 80}}>🏪</Text>
+                  <View style={styles.miniPeople}>
+                    <Text style={{fontSize: 20}}>👤</Text>
+                    <Text style={{fontSize: 20}}>👤</Text>
+                  </View>
+                  <View style={styles.miniStars}><Text style={{fontSize: 14}}>⭐⭐⭐⭐⭐</Text></View>
+               </View>
+            </View>
+            <TouchableOpacity style={styles.googleBtn} onPress={() => Alert.alert('Notice', 'Google login coming soon!')}>
+               <View style={styles.googleIconBox}><Text style={styles.googleTextIcon}>G</Text></View>
+               <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.emailBtn} onPress={() => setView('login')}><Text style={styles.emailBtnText}>Sign in with Email</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.newBizBtn} onPress={() => setView('register')}><Text style={styles.newBizText}>New business? Register Now</Text></TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (view === 'login') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.appTitle}>Log In</Text>
+          <Text style={{color: '#888', marginTop: 10}}>Welcome back! Please enter your details.</Text>
+          <View style={{height: 40}} />
+          
+          <Text style={styles.settingLabel}>Email Address</Text>
+          <TextInput 
+            style={[styles.input, {borderColor: '#ccc'}]} 
+            placeholder="example@mail.com" 
+            placeholderTextColor="#999"
+            value={loginEmail} 
+            onChangeText={setLoginEmail} 
+            autoCapitalize="none" 
+          />
+          
+          <Text style={styles.settingLabel}>Password</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TextInput 
+              style={[styles.input, {flex: 1, borderColor: '#ccc'}]} 
+              placeholder="Min. 8 characters" 
+              placeholderTextColor="#999"
+              value={loginPassword} 
+              onChangeText={setLoginPassword} 
+              secureTextEntry={!showPassword} 
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{position: 'absolute', right: 15, top: 18}}>
+              <Text style={{color: COLORS.primary, fontWeight: 'bold'}}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity style={styles.blackBtn} onPress={() => onLogin(loginEmail, loginPassword)}>
+            <Text style={styles.whiteBtnText}>Log In</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={{alignSelf: 'center', marginTop: 25}} onPress={() => setView('register')}>
+            <Text style={{color: COLORS.primary, fontWeight: '700'}}>Don't have an account? <Text style={{textDecorationLine: 'underline'}}>Register Now</Text></Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.backBtn} onPress={() => setView('initial')}>
+            <Text style={styles.backBtnText}>← Go Back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ──── REGISTRATION STEPS ────
+
+  // 0: Help us find your location
+  if (regStep === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => setView('initial')}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Registration</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.onboardTitle}>Help us find your{'\n'}business location on{'\n'}Google map</Text>
+          <Text style={styles.onboardSub}>Adding your business location on Google Map, will unlock your access to your business reputation page.</Text>
+          <View style={styles.illustMiddle}><Text style={{fontSize: 100}}>📍</Text></View>
+          <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}>
+             <Text style={styles.whiteBtnText}>📍 Find Your Business</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+
+
+  const handleSearch = async (text: string) => {
+    setSearchQuery(text);
+    if (text.length > 2) {
+      try {
+        setIsSearching(true);
+        console.log(`[Search] Querying: ${text}...`);
+        const res = await fetch(`${API_BASE}/business/search-places`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: text }),
+        });
+        const data = await res.json();
+        console.log(`[Search] Response state: ${res.status}. Data:`, data);
+        if (Array.isArray(data)) {
+          setSearchResults(data);
+        }
+      } catch (e) {
+        console.error('[Search] Networking Error:', e);
+      } finally {
+        setIsSearching(false);
+      }
     } else {
-      if (loginEmail && loginPassword) {
-        onLogin(loginEmail, loginPassword);
-      } else {
-        Alert.alert('Incomplete Fields', 'Please provide email and password.');
-      }
+      setSearchResults([]);
+      setIsSearching(false);
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.logoSection}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>⭐</Text>
+  const handleSelectBiz = (res: any) => {
+    setBizName(res.name);
+    setLink(res.link);
+    setSearchResults([]);
+    setSearchQuery(res.name);
+    Keyboard.dismiss();
+  };
+
+  // 1: Name & Map Search
+  if (regStep === 1) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Name of your Business</Text>
+        </View>
+        <View style={{padding: 20}}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TextInput 
+              style={[styles.input, {flex: 1}]} 
+              placeholder="Search business name..." 
+              value={searchQuery} 
+              onChangeText={handleSearch} 
+            />
+            {isSearching && (
+              <ActivityIndicator style={{position: 'absolute', right: 15}} color="#000" />
+            )}
           </View>
-          <Text style={styles.appTitle}>Review Boost!</Text>
-          <Text style={styles.appSubtitle}>
-            {isRegistering ? 'Create your business account.' : 'Login to your dashboard.'}
-          </Text>
-        </View>
-
-        <View style={styles.formSection}>
-          {isRegistering ? (
-            <>
-              <Text style={styles.sectionDivider}>Store Details</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Store / Business Name"
-                placeholderTextColor={COLORS.mediumGray}
-                value={bizName}
-                onChangeText={setBizName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Google Review Page Link"
-                placeholderTextColor={COLORS.mediumGray}
-                value={link}
-                onChangeText={setLink}
-              />
-              
-              <Text style={styles.sectionDivider}>Owner Details</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Owner Full Name"
-                placeholderTextColor={COLORS.mediumGray}
-                value={ownerName}
-                onChangeText={setOwnerName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Owner Phone Number"
-                placeholderTextColor={COLORS.mediumGray}
-                value={ownerPhone}
-                onChangeText={setOwnerPhone}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={styles.sectionDivider}>Account Credentials (for Login)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Working Email Address"
-                placeholderTextColor={COLORS.mediumGray}
-                value={regEmail}
-                onChangeText={setRegEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Create Password"
-                placeholderTextColor={COLORS.mediumGray}
-                value={regPassword}
-                onChangeText={setRegPassword}
-                secureTextEntry
-              />
-            </>
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor={COLORS.mediumGray}
-                value={loginEmail}
-                onChangeText={setLoginEmail}
-                autoCapitalize="none"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={COLORS.mediumGray}
-                value={loginPassword}
-                onChangeText={setLoginPassword}
-                secureTextEntry
-              />
-            </>
+          
+          {(isSearching || searchResults.length > 0) && (
+            <View style={styles.suggestionBox}>
+               {isSearching ? (
+                 <View style={{padding: 15}}><Text style={{color: '#999'}}>Searching Google Maps...</Text></View>
+               ) : (
+                 searchResults.map((res, i) => (
+                   <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleSelectBiz(res)}>
+                      <Text style={styles.suggestionTitle}>{res.name}</Text>
+                      <Text style={styles.suggestionSub}>{res.address || 'Select this location'}</Text>
+                   </TouchableOpacity>
+                 ))
+               )}
+            </View>
           )}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleAction}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>
-              {isRegistering ? 'Register & Start' : 'Log In'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.switchButton}
-            onPress={() => setIsRegistering(!isRegistering)}
-          >
-            <Text style={styles.switchText}>
-              {isRegistering ? 'Already have an account? Log In' : 'New business? Register Now'}
-            </Text>
-          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+        <View style={styles.mapMock}>
+          <Text style={styles.mapText}>📍 {bizName || 'Search above to find location'}</Text>
+          <Text style={styles.mapSub}>{bizName ? 'Location pinned on Map' : 'Showing nearby businesses'}</Text>
+        </View>
+        <TouchableOpacity style={styles.floatNext} onPress={nextRegStep}>
+          <Text style={styles.whiteBtnText}>Next</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  // 2: Type of your business
+  if (regStep === 2) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Business Type</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.onboardSub}>Type of your business</Text>
+          <Text style={styles.onboardTitle}>How do you serve your{'\n'}customers at{'\n'}{bizName || 'your Business'}?</Text>
+          
+          <TouchableOpacity style={[styles.choiceBtn, bizType === 'In Person' && styles.choiceActive]} onPress={() => setBizType('In Person')}>
+            <Text style={styles.choiceLabel}>In Person</Text><Text style={{fontSize: 30}}>🏪</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.choiceBtn, bizType === 'Remotely' && styles.choiceActive]} onPress={() => setBizType('Remotely')}>
+            <Text style={styles.choiceLabel}>Remotely</Text><Text style={{fontSize: 30}}>📱</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.choiceBtn, bizType === 'Both' && styles.choiceActive]} onPress={() => setBizType('Both')}>
+            <Text style={styles.choiceLabel}>Both</Text><Text style={{fontSize: 30}}>🔄</Text>
+          </TouchableOpacity>
+
+          <View style={{height: 100}} />
+          <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}><Text style={styles.whiteBtnText}>Next</Text></TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // 3: Privacy Choices (Welcome Yto Style)
+  if (regStep === 3) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Privacy Settings</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.onboardSub}>Welcome {ownerName || 'User'}</Text>
+          <Text style={styles.onboardTitle}>All reviews stay private in ReviewUP!</Text>
+          <Text style={styles.onboardSub}>Choose what to share on {'\n'}<Text style={{color: '#4285F4'}}>G</Text><Text style={{color: '#EA4335'}}>o</Text><Text style={{color: '#FBBC05'}}>o</Text><Text style={{color: '#4285F4'}}>g</Text><Text style={{color: '#34A853'}}>l</Text><Text style={{color: '#EA4335'}}>e</Text></Text>
+
+          <TouchableOpacity style={[styles.settingCard, privacyTier === '5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('5-star')}>
+            <Text style={styles.settingLabel}>5-star reviews only</Text>
+            <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.settingCard, privacyTier === '4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('4-5-star')}>
+            <Text style={styles.settingLabel}>4 & 5-star reviews</Text>
+            <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
+          </TouchableOpacity>
+
+          <View style={{height: 100}} />
+          <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}><Text style={styles.whiteBtnText}>Next</Text></TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // 4: Account Creation (Bridge)
+  if (regStep === 4) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Account Creation</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.onboardTitle}>Create your account</Text>
+          <Text style={styles.onboardSub}>Enter your details to manage your business profile.</Text>
+
+          <Text style={styles.settingLabel}>Full Name</Text>
+          <TextInput style={styles.input} placeholder="e.g. John Doe" value={ownerName} onChangeText={setOwnerName} />
+
+          <Text style={styles.settingLabel}>Email Address</Text>
+          <TextInput style={styles.input} placeholder="name@company.com" value={regEmail} onChangeText={setRegEmail} autoCapitalize="none" keyboardType="email-address" />
+
+          <Text style={styles.settingLabel}>Create Password</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TextInput 
+              style={[styles.input, {flex: 1}]} 
+              placeholder="At least 8 characters" 
+              value={regPassword} 
+              onChangeText={setRegPassword} 
+              secureTextEntry={!showPassword} 
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{position: 'absolute', right: 15, top: 18}}>
+              <Text style={{color: COLORS.primary, fontWeight: 'bold'}}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.settingLabel}>Google Review Link</Text>
+          <TextInput 
+            style={[styles.input, {backgroundColor: '#f9f9f9', color: '#666'}]} 
+            placeholder="Auto-filled from Google Maps" 
+            value={link} 
+            onChangeText={setLink} 
+            multiline
+            numberOfLines={2}
+          />
+          
+          <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}>
+            <Text style={styles.whiteBtnText}>One last step...</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // 5: QR Selection
+  if (regStep === 5) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerLabel}>Select a QR code</Text>
+        </View>
+        <ScrollView contentContainerStyle={{padding: 20}}>
+          <Text style={styles.onboardSub}>Which QR code would you like to use?</Text>
+          <View style={styles.qrGrid}>
+            {['default', 'hearts', 'scanme', 'beer', 'gift', 'shop'].map(style => (
+               <TouchableOpacity key={style} style={[styles.qrStyleCard, qrStyle === style && styles.qrActive]} onPress={() => setQrStyle(style)}>
+                  <View style={styles.qrMock}><Text style={{fontSize: 40}}>
+                    {style === 'hearts' ? '❤️' : style === 'beer' ? '🍺' : style === 'shop' ? '👜' : '📱'}
+                  </Text></View>
+                  <Text style={styles.qrStyleLabel}>{style.toUpperCase()}</Text>
+               </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}><Text style={styles.whiteBtnText}>Confirm Design ✨</Text></TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // 6: Final QR Preview & Dashboard Finish
+  if (regStep === 6) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <TouchableOpacity onPress={prevRegStep}><Text style={[styles.backArrow, {marginBottom: 20}]}>←</Text></TouchableOpacity>
+          <Text style={styles.onboardTitle}>Print or download your QR code</Text>
+          <Text style={styles.onboardSub}>Let customers scan it and leave feedback for you</Text>
+
+          <View style={styles.finalQrCard}>
+             <Text style={styles.finalBizName}>{bizName || 'Xenocipher Pvt Ltd'}</Text>
+             <Text style={styles.cursiveText}>Leave us a Review</Text>
+             <View style={styles.finalQrFrame}>
+                <View style={styles.frameIcon}><Text style={{fontSize: 60}}>{qrStyle === 'beer' ? '🍺' : '📱'}</Text></View>
+                <View style={styles.realQrMock}>
+                   <QRCode value={`https://google.com`} size={80} color="black" backgroundColor="white" />
+                </View>
+                <View style={styles.scanMeBadge}><Text style={styles.scanMeText}>SCAN ME</Text></View>
+             </View>
+          </View>
+
+          <View style={{height: 60}} />
+          <TouchableOpacity style={styles.blackBtn} onPress={handleFinalRegister}>
+            <Text style={styles.whiteBtnText}>Go to Dashboard</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
+  container: { flex: 1, backgroundColor: COLORS.white },
+  scrollContent: { padding: 32, flexGrow: 1, paddingTop: 60 },
+  initialContent: { flex: 1, padding: 32, justifyContent: 'center', alignItems: 'center' },
+  illustrationWrap: { marginBottom: 60, alignItems: 'center' },
+  storePlaceholder: { width: 200, height: 200, borderRadius: 20, backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  miniPeople: { position: 'absolute', bottom: 10, flexDirection: 'row', gap: 40 },
+  miniStars: { position: 'absolute', top: 50 },
+  
+  googleBtn: { width: '100%', height: 60, borderRadius: 30, borderWidth: 1.5, borderColor: '#eee', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  googleIconBox: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12, elevation: 2, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.1, shadowRadius: 2 },
+  googleTextIcon: { fontSize: 18, fontWeight: '900', color: '#4285F4' },
+  googleBtnText: { fontSize: 16, fontWeight: '700', color: '#333' },
+  
+  emailBtn: { width: '100%', height: 60, borderRadius: 30, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emailBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  
+  newBizBtn: { marginTop: 10 },
+  newBizText: { color: COLORS.primary, fontWeight: '600' },
+
+  appTitle: { fontSize: 32, fontWeight: '800', color: COLORS.darkGray },
+  onboardTitle: { fontSize: 28, fontWeight: '800', color: '#000', lineHeight: 36, marginBottom: 12 },
+  onboardSub: { fontSize: 16, color: '#666', lineHeight: 24, marginBottom: 30 },
+  illustMiddle: { flex: 1, alignItems: 'center', justifyContent: 'center', marginVertical: 40 },
+
+  blackBtn: { width: '100%', height: 60, borderRadius: 30, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  whiteBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  backBtn: { marginTop: 24, alignSelf: 'center' },
+  backBtnText: { color: COLORS.mediumGray, fontWeight: '600' },
+  
+  input: { borderWidth: 1.5, borderColor: '#eee', borderRadius: 12, padding: 18, fontSize: 16, backgroundColor: '#fff', color: '#000', marginBottom: 16 },
+  
+  headerRow: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  backArrow: { fontSize: 24, fontWeight: '700', marginRight: 20 },
+  headerLabel: { fontSize: 18, fontWeight: '800' },
+  
+  mapMock: { flex: 1, backgroundColor: '#eef4ff', alignItems: 'center', justifyContent: 'center' },
+  mapText: { fontSize: 18, fontWeight: '700', color: '#0066FF' },
+  mapSub: { fontSize: 12, color: '#999', marginTop: 10 },
+  floatNext: { position: 'absolute', bottom: 40, alignSelf: 'center', width: width - 60, height: 60, borderRadius: 30, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  
+  choiceBtn: { width: '100%', height: 80, borderRadius: 16, borderWidth: 2, borderColor: '#eee', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 },
+  choiceActive: { borderColor: '#000' },
+  choiceLabel: { fontSize: 18, fontWeight: '700', color: '#666' },
+  
+  settingCard: { width: '100%', padding: 25, borderRadius: 24, borderWidth: 2, borderColor: '#eee', marginBottom: 20 },
+  settingLabel: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  
+  qrGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, marginBottom: 40 },
+  qrStyleCard: { width: (width - 70) / 2, height: 160, borderRadius: 20, borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center' },
+  qrActive: { borderColor: COLORS.primary },
+  qrMock: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  qrStyleLabel: { fontSize: 10, fontWeight: '800', color: '#aaa' },
+
+  // Final QR Style
+  finalQrCard: { 
+    backgroundColor: '#fff', borderRadius: 32, padding: 32, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
+    borderWidth: 1.5, borderColor: '#f0f0f0' 
   },
-  scrollContent: {
-    padding: 24,
-    flexGrow: 1,
-    paddingTop: 40,
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoIcon: {
-    fontSize: 40,
-    color: '#FFD700',
-  },
-  appTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: COLORS.darkGray,
-  },
-  appSubtitle: {
-    fontSize: 14,
-    color: COLORS.mediumGray,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  formSection: {
-    width: '100%',
-  },
-  sectionDivider: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginTop: 20,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.lightBorder,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    fontSize: 16,
-    color: COLORS.darkGray,
-    backgroundColor: COLORS.lightGray,
-  },
-  button: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  switchButton: {
-    marginTop: 20,
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  switchText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
+  finalBizName: { fontSize: 20, fontWeight: '800', color: '#333', marginBottom: 12 },
+  cursiveText: { fontSize: 28, fontStyle: 'italic', fontFamily: 'serif', color: '#444', marginBottom: 24 },
+  finalQrFrame: { width: 140, height: 200, borderWidth: 3, borderColor: '#000', borderRadius: 20, padding: 15, alignItems: 'center', justifyContent: 'flex-start' },
+  frameIcon: { marginBottom: 10 },
+  realQrMock: { padding: 5, backgroundColor: '#fff', borderWidth: 1 },
+  scanMeBadge: { backgroundColor: '#000', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 4, marginTop: 15 },
+  scanMeText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+
+  suggestionBox: { position: 'absolute', top: 60, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 12, elevation: 20, shadowColor: '#000', shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.3, shadowRadius: 15, zIndex: 9999, borderWidth: 1, borderColor: '#ddd' },
+  suggestionItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  suggestionTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
+  suggestionSub: { fontSize: 12, color: '#999', marginTop: 4 },
 });
