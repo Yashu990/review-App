@@ -1,0 +1,8 @@
+{
+  "name": "Live Test Biz",
+  "ownerName": "Live Test Owner",
+  "ownerPhone": "9876543210",
+  "googleReviewLink": "https://maps.google.com",
+  "email": "livetest@example.com",
+  "password": "mypassword"
+}

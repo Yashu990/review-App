@@ -167,7 +167,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
             <Text style={{color: COLORS.primary, fontWeight: '700'}}>Don't have an account? <Text style={{textDecorationLine: 'underline'}}>Register Now</Text></Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.backBtn} onPress={() => setView('initial')}>
+          <TouchableOpacity style={[styles.backBtnWrapper, {alignSelf: 'center', marginTop: 15}]} onPress={() => setView('initial')} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
             <Text style={styles.backBtnText}>← Go Back</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -182,7 +182,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => setView('initial')}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={() => setView('initial')} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Registration</Text>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -239,7 +241,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Name of your Business</Text>
         </View>
         <View style={{padding: 20}}>
@@ -286,7 +290,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Business Type</Text>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -315,7 +321,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Privacy Settings</Text>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -327,9 +335,15 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
             <Text style={styles.settingLabel}>5-star reviews only</Text>
             <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity style={[styles.settingCard, privacyTier === '4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('4-5-star')}>
             <Text style={styles.settingLabel}>4 & 5-star reviews</Text>
-            <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
+            <Text style={{fontSize: 20}}>⭐⭐⭐⭐</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.settingCard, privacyTier === '3-4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('3-4-5-star')}>
+            <Text style={styles.settingLabel}>3, 4 & 5-star reviews</Text>
+            <Text style={{fontSize: 20}}>⭐⭐⭐</Text>
           </TouchableOpacity>
 
           <View style={{height: 100}} />
@@ -344,7 +358,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Account Creation</Text>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -394,7 +410,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.headerLabel}>Select a QR code</Text>
         </View>
         <ScrollView contentContainerStyle={{padding: 20}}>
@@ -420,7 +438,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <TouchableOpacity onPress={prevRegStep}><Text style={[styles.backArrow, {marginBottom: 20}]}>←</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={prevRegStep} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={[styles.backArrow, {marginBottom: 10}]}>←</Text>
+          </TouchableOpacity>
           <Text style={styles.onboardTitle}>Print or download your QR code</Text>
           <Text style={styles.onboardSub}>Let customers scan it and leave feedback for you</Text>
 
@@ -481,7 +501,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1.5, borderColor: '#eee', borderRadius: 12, padding: 18, fontSize: 16, backgroundColor: '#fff', color: '#000', marginBottom: 16 },
   
   headerRow: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  backArrow: { fontSize: 24, fontWeight: '700', marginRight: 20 },
+  backArrow: { fontSize: 24, fontWeight: '700', color: '#000' },
+  backBtnWrapper: { padding: 10, marginLeft: -10 },
   headerLabel: { fontSize: 18, fontWeight: '800' },
   
   mapMock: { flex: 1, backgroundColor: '#eef4ff', alignItems: 'center', justifyContent: 'center' },

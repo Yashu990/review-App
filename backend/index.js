@@ -80,6 +80,7 @@ app.get('/api/business/:id', async (req, res) => {
       referralCode: biz.referralCode,
       referralCount: biz.referralCount,
       plan: biz.plan,
+      privacyTier: biz.privacyTier,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -89,7 +90,11 @@ app.get('/api/business/:id', async (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, ownerName, ownerPhone, googleReviewLink, email, password, usedReferralCode } = req.body;
+    const { 
+      name, ownerName, ownerPhone, googleReviewLink, 
+      email, password, usedReferralCode, 
+      businessType, privacyTier, qrStyle 
+    } = req.body;
 
     if (!name || !ownerName || !ownerPhone || !googleReviewLink || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -121,6 +126,9 @@ app.post('/api/register', async (req, res) => {
       logo: '',
       referralCode,
       referralCount: 0,
+      businessType: businessType || 'Both',
+      privacyTier: privacyTier || '5-star',
+      qrStyle: qrStyle || 'default',
     });
 
     // If someone used a referral code — reward that referrer

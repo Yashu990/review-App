@@ -99,7 +99,10 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
                     size={200}
                     color="black"
                     backgroundColor={COLORS.white}
-                    logoSize={40}
+                    logo={biz.logo ? { uri: biz.logo } : undefined}
+                    logoSize={45}
+                    logoBorderRadius={10}
+                    logoBackgroundColor={COLORS.white}
                   />
                   <Text style={styles.qrCaption}>Scan to Review</Text>
                 </View>

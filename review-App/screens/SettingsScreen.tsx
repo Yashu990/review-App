@@ -58,10 +58,57 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
   const [ownerPhone, setOwnerPhone] = useState(business?.ownerPhone || '');
   const [googleLink, setGoogleLink] = useState(business?.googleReviewLink || '');
   const [logoBase64, setLogoBase64] = useState(business?.logo || '');
+  const [bizType, setBizType] = useState(business?.businessType || 'Both');
+  const [privacyTier, setPrivacyTier] = useState(business?.privacyTier || '5-star');
+  const [qrStyle, setQrStyle] = useState(business?.qrStyle || 'default');
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const pickImage = async () => { /* ... (keep as is) */ };
-  const handleUpdate = async () => { /* ... (keep as is) */ };
+  const pickImage = async () => {
+    const result = await launchImageLibrary({ mediaType: 'photo', includeBase64: true, quality: 0.5 });
+    if (result.assets && result.assets[0].base64) {
+      setLogoBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
+  const handleUpdate = async (overrides: Partial<Business> = {}) => {
+    if (!business?.id) return;
+    setLoading(true);
+    try {
+      const updateData = {
+        name,
+        ownerName,
+        ownerPhone,
+        googleReviewLink: googleLink,
+        logo: logoBase64,
+        businessType: bizType,
+        privacyTier,
+        qrStyle,
+        ...overrides,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/business/${business.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (onUpdateBusiness) {
+          await onUpdateBusiness(data.business);
+        }
+        Alert.alert('Success', 'Profile updated successfully! ✨');
+        setIsEditModalVisible(false);
+      } else {
+        const err = await response.json();
+        Alert.alert('Error', err.error || 'Update failed');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRefer = async () => {
     let code = business?.referralCode;
@@ -267,8 +314,33 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
                <Text style={styles.inputLabel}>Phone</Text>
                <TextInput style={styles.input} value={ownerPhone} onChangeText={setOwnerPhone} />
                <Text style={styles.inputLabel}>Google Link</Text>
-               <TextInput style={styles.input} value={googleLink} onChangeText={setGoogleLink} />
-               <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
+               <TextInput style={[styles.input, {height: 60}]} value={googleLink} onChangeText={setGoogleLink} multiline />
+
+               {/* New Edit Fields */}
+               <Text style={styles.inputLabel}>Business Type</Text>
+               <View style={styles.rowChoice}>
+                  {['In Person', 'Remotely', 'Both'].map(t => (
+                    <TouchableOpacity key={t} style={[styles.miniBtn, bizType === t && styles.miniBtnActive]} onPress={() => setBizType(t)}><Text style={[styles.miniBtnText, bizType === t && styles.miniBtnTextActive]}>{t}</Text></TouchableOpacity>
+                  ))}
+               </View>
+
+               <Text style={styles.inputLabel}>Privacy Tier (Minimum to show Google)</Text>
+               <View style={styles.rowChoice}>
+                  {['5-star', '4-5-star', '3-4-5-star'].map(p => (
+                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === p && styles.miniBtnActive]} onPress={() => setPrivacyTier(p)}><Text style={[styles.miniBtnText, privacyTier === p && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
+                  ))}
+               </View>
+
+               <Text style={styles.inputLabel}>QR Code Style</Text>
+               <View style={[styles.rowChoice, {flexWrap: 'wrap'}]}>
+                  {['default', 'hearts', 'scanme', 'beer', 'gift', 'shop'].map(s => (
+                    <TouchableOpacity key={s} style={[styles.miniBtn, qrStyle === s && styles.miniBtnActive, {width: '30%', marginBottom: 10}]} onPress={() => setQrStyle(s)}><Text style={[styles.miniBtnText, qrStyle === s && styles.miniBtnTextActive]}>{s}</Text></TouchableOpacity>
+                  ))}
+               </View>
+
+               <TouchableOpacity style={styles.saveBtn} onPress={() => handleUpdate({
+                 name, ownerName, ownerPhone, googleReviewLink: googleLink, businessType: bizType, privacyTier, qrStyle
+               })}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -378,6 +450,11 @@ const styles = StyleSheet.create({
   input: { backgroundColor: COLORS.lightGray, padding: 14, borderRadius: 12, marginTop: 6 },
   saveBtn: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, marginTop: 30, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '800' },
+  rowChoice: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 16 },
+  miniBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', alignItems: 'center' },
+  miniBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  miniBtnText: { fontSize: 12, color: '#666', fontWeight: '600' },
+  miniBtnTextActive: { color: '#fff' },
   bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightBorder, paddingVertical: 12, paddingBottom: 24 },
   navItem: { flex: 1, alignItems: 'center' },
   navIcon: { fontSize: 20 },

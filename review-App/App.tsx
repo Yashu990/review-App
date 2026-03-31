@@ -41,6 +41,9 @@ export interface Business {
   referralCode?: string;
   referralCount?: number;
   plan?: string;
+  businessType?: string;
+  privacyTier?: string;
+  qrStyle?: string;
 }
 
 export interface PrivateReview {

@@ -231,6 +231,7 @@
     <script>
         let selectedStars = 0;
         let googleLink = "";
+        let privacyTier = "5-star"; // Default
         
         const params = new URLSearchParams(window.location.search);
         const bizId = params.get('businessId') || params.get('id'); // Support both
@@ -247,6 +248,7 @@
                     const data = await res.json();
                     document.getElementById('biz-name-display').innerText = data.name;
                     googleLink = data.googleReviewLink;
+                    privacyTier = data.privacyTier || "5-star";
                 }
             } catch (e) { console.error(e); }
         }
@@ -263,12 +265,23 @@
                     st.classList.toggle('selected', idx < selectedStars);
                 });
 
-                if (selectedStars >= 4) {
+                // High-Rating Logic: Determine when to send to Google
+                console.log(`Privacy Tier: ${privacyTier}, Selected Stars: ${selectedStars}`);
+                
+                let isHighRating = false;
+                if (privacyTier === '5-star') {
+                    isHighRating = (selectedStars >= 5);
+                } else if (privacyTier === '4-5-star') {
+                    isHighRating = (selectedStars >= 4);
+                } else if (privacyTier === '3-4-5-star') {
+                    isHighRating = (selectedStars >= 3);
+                }
+
+                if (isHighRating) {
                     if (googleLink) {
                         alert("We're glad you liked us! Opening our Google Review page...");
                         window.location.href = googleLink;
                     } else {
-                        // If no link, show form anyway
                         form.style.display = 'flex';
                     }
                 } else {
