@@ -23,7 +23,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 // ── Google Sign-In Config placeholder ────────────────────────────────────────
 // Once you get your WEB_CLIENT_ID from Firebase Console -> Project Settings
 // Add it here. This is REQUIRED for both Android/iOS to work.
-GoogleSignin.configure({ webClientId: '490330363547-fte79psjec8f3cek97mc0echju7dt2s2.apps.googleusercontent.com' });
+GoogleSignin.configure({ webClientId: '939259415099-k42l57g4gdc5ts54a4cdf3fv8eprvk6d.apps.googleusercontent.com' });
 
 const { width, height } = Dimensions.get('window');
 
@@ -140,7 +140,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
         // Already in progress
       } else {
         console.error('Google Error:', error);
-        Alert.alert('Google Sign-In Error', `Details: ${error.message || error.code || 'Unknown Error'}. \n\nPlease ensure your SHA-1 is saved in Firebase and your Web Client ID is correct.`);
+        Alert.alert('Google Sign-In Error', `Details: ${error.message || error.code || 'Unknown Error'}. \n\nPlease ensure your SHA-1 is saved in your Google Cloud Console and your Web Client ID is correct.`);
       }
     }
   };

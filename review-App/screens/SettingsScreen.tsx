@@ -33,10 +33,11 @@ const COLORS = {
 };
 
 // ── Contact details — Helonix Official ─────────────────────────────────────────
-const CONTACT_PHONE    = '+919999728733'; // Helonix WhatsApp Support
-const SUPPORT_EMAIL    = 'Helonixgroup@gmail.com'; 
-const SUPPORT_INFO     = 'Info@helonix.com';
-const CONTACT_WA_MSG   = 'Hi Helonix! I need help with Review Boost app.';
+const CONTACT_PHONE_CLEAN = '919999728733'; // Without + for wa.me
+const CONTACT_PHONE       = '+919999728733'; // For display/tel
+const SUPPORT_EMAIL       = 'Helonixgroup@gmail.com'; 
+const SUPPORT_INFO        = 'Info@helonix.com';
+const CONTACT_WA_MSG      = 'Hi Helonix! I need help with Review Boost app.';
 const WEBSITE_URL      = 'https://www.helonix.com';
 const PLAY_STORE_URL   = 'market://details?id=com.reviewboost';
 
@@ -127,12 +128,12 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
     if (onScreenChange) onScreenChange('referral');
   };
 
-  const handleContactUs = () => { Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=${encodeURIComponent(CONTACT_WA_MSG)}`).catch(() => Linking.openURL(`tel:${CONTACT_PHONE}`)); };
+  const handleContactUs = () => { Linking.openURL(`https://wa.me/${CONTACT_PHONE_CLEAN}?text=${encodeURIComponent(CONTACT_WA_MSG)}`).catch(() => Linking.openURL(`tel:${CONTACT_PHONE}`)); };
   const openGMB = () => { Linking.openURL(business?.googleReviewLink || 'https://business.google.com').catch(() => Alert.alert('Error', 'Link failed.')); };
 
   const handleUpgradeSelect = (plan: string, price: string) => {
     const waMsg = `Hi Helonix! I want to upgrade to the *${plan}* plan (₹${price}/mo) for my business: *${business?.name}*. Please send me the payment details. 🚀`;
-    const waUrl = `whatsapp://send?phone=${CONTACT_PHONE}&text=${encodeURIComponent(waMsg)}`;
+    const waUrl = `https://wa.me/${CONTACT_PHONE_CLEAN}?text=${encodeURIComponent(waMsg)}`;
     
     Alert.alert(
       'Upgrade via WhatsApp 🚀',
@@ -215,7 +216,7 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
         <Text style={styles.sectionLabel}>Support & Settings</Text>
         <View style={styles.menuSection}>
           <MenuItem icon="📞" label="Contact Helonix Support" onPress={handleContactUs} />
-          <MenuItem icon="📝" label="Give Us Feedback"        onPress={() => Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=I have a feedback for Review Boost: `)} />
+          <MenuItem icon="📝" label="Give Us Feedback"        onPress={() => Linking.openURL(`https://wa.me/${CONTACT_PHONE_CLEAN}?text=I have a feedback for Review Boost: `)} />
           <MenuItem icon="🌐" label="Language: English / हिन्दी" onPress={() => {
             const newLang = language === 'English' ? 'Hindi' : 'English';
             setLanguage(newLang);
@@ -252,7 +253,7 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
                  <Text style={styles.supportTitle}>Need Help? Contact Us:</Text>
                  <Text style={styles.supportItem}>📧 {SUPPORT_EMAIL}</Text>
                  <Text style={styles.supportItem}>📧 {SUPPORT_INFO}</Text>
-                 <TouchableOpacity style={styles.waButton} onPress={() => Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=Hi Helonix! I need help with plan upgrade.`)}>
+                 <TouchableOpacity style={styles.waButton} onPress={() => Linking.openURL(`https://wa.me/${CONTACT_PHONE_CLEAN}?text=Hi Helonix! I need help with plan upgrade.`)}>
                     <Text style={styles.waButtonText}>Chat on WhatsApp 📱</Text>
                  </TouchableOpacity>
                </View>
@@ -297,7 +298,7 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
                <Text style={styles.inputLabel}>Privacy Tier (Minimum to show Google)</Text>
                <View style={styles.rowChoice}>
                   {['5-star', '4-star'].map(p => (
-                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === (p === '4-star' ? '4-5-star' : p) && styles.miniBtnActive]} onPress={() => setPrivacyTier(p === '4-star' ? '4-5-star' : p)}><Text style={[styles.miniBtnText, privacyTier === (p === '4-star' ? '4-5-star' : p) && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
+                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === p && styles.miniBtnActive]} onPress={() => setPrivacyTier(p)}><Text style={[styles.miniBtnText, privacyTier === p && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
                   ))}
                </View>
 

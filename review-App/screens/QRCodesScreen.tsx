@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
-import ViewShot, { captureRef } from 'react-native-view-shot';
+import ViewShot from 'react-native-view-shot';
 import Share from 'react-native-share'; 
 import QRCode from 'react-native-qrcode-svg';
+import RNFS from 'react-native-fs';
 import { Business } from '../App';
 
 const COLORS = {
@@ -31,7 +34,8 @@ interface QRCodesScreenProps {
 
 export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: QRCodesScreenProps) {
   const [sharing, setSharing] = useState(false);
-  const viewShotRef = useRef<any>(null);
+  // Using a map to handle multiple businesses correctly
+  const cardRefs = useRef<{[key: string]: any}>({});
   
   const generateRealLink = (business: Business) => {
     const BASE_URL = "http://103.142.175.170:7500"; // Live Server
@@ -52,24 +56,63 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (bizId: string) => {
     try {
-      setSharing(true);
-      const uri = await captureRef(viewShotRef, {
-        format: 'png',
-        quality: 1.0,
-      });
+      // 1. Android Permission Check
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to your gallery to download the QR code image.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED && Platform.Version < 33) {
+          // Note: On Android 13+ (v33), WRITE_EXTERNAL_STORAGE is deprecated but we handle it
+          console.log('Permission not granted');
+        }
+      }
 
-      await Share.open({
-        title: 'Review Boost QR',
-        url: uri,
-        type: 'image/png',
-        failOnCancel: false,
-      });
+      const targetRef = cardRefs.current[bizId];
+      if (!targetRef) throw new Error('Ref not found');
+
+      setSharing(true);
+      
+      // 2. Tiny delay & Instant Capture
+      setTimeout(async () => {
+        try {
+          const captureUri = await targetRef.capture(); 
+          // Normalize path: RNFS needs the absolute path without 'file://'
+          const sourcePath = captureUri.replace('file://', '');
+
+          // 3. Save directly to Downloads folder
+          const fileName = `QR_${bizId}_${Date.now()}.png`;
+          const destPath = Platform.OS === 'android' 
+            ? `${RNFS.ExternalStorageDirectoryPath}/Download/${fileName}`
+            : `${RNFS.DocumentDirectoryPath}/${fileName}`;
+
+          await RNFS.copyFile(sourcePath, destPath);
+
+          // 4. IMPORTANT: Force Android to 'Scan' the new file so it appears in Gallery/Downloads
+          if (Platform.OS === 'android') {
+            await RNFS.scanFile(destPath);
+          }
+          
+          Alert.alert('Download Complete ✅', `Saved to: Gallery / Downloads`);
+        } catch (innerErr) {
+          console.error(innerErr);
+          Alert.alert('Capture failed', 'Please try again or take a screenshot.');
+        } finally {
+          setSharing(false);
+        }
+      }, 200);
+
     } catch (error: any) {
-      console.error('Capture failed', error);
-      Alert.alert('Error', 'Could not capture QR image.');
-    } finally {
+      console.error('Download setup failed', error);
+      Alert.alert('Error', 'Please try again.');
       setSharing(false);
     }
   };
@@ -122,26 +165,29 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
           businesses.map((biz) => {
             const qrLink = generateRealLink(biz);
             return (
-              <ViewShot key={biz.id} ref={viewShotRef} options={{ format: "png", quality: 1.0 }}>
                 <View style={[styles.card, {backgroundColor: getStyleColor(biz.qrStyle)}]}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.bizName}>{biz.name} {getStyleIcon(biz.qrStyle)}</Text>
-                    <Text style={styles.ownerInfo}>Scan to Review our Business</Text>
-                  </View>
+                  <ViewShot key={biz.id} ref={(ref) => { cardRefs.current[biz.id] = ref; }} options={{ format: "png", quality: 1.0 }}>
+                    <View style={{backgroundColor: getStyleColor(biz.qrStyle), padding: 20}}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.bizName}>{biz.name} {getStyleIcon(biz.qrStyle)}</Text>
+                        <Text style={styles.ownerInfo}>Scan to Review our Business</Text>
+                      </View>
 
-                  <View style={styles.qrContainer}>
-                    <QRCode
-                      value={qrLink}
-                      size={200}
-                      color="black"
-                      backgroundColor={COLORS.white}
-                      logo={biz.logo ? { uri: biz.logo } : undefined}
-                      logoSize={50}
-                      logoBorderRadius={12}
-                      logoBackgroundColor={COLORS.white}
-                    />
-                    <Text style={[styles.qrCaption, {marginTop: 15, fontWeight: '700'}]}>POWERED BY REVIEW BOOST 🚀</Text>
-                  </View>
+                      <View style={styles.qrContainer}>
+                        <QRCode
+                          value={qrLink}
+                          size={200}
+                          color="black"
+                          backgroundColor={COLORS.white}
+                          logo={biz.logo ? { uri: biz.logo } : undefined}
+                          logoSize={50}
+                          logoBorderRadius={12}
+                          logoBackgroundColor={COLORS.white}
+                        />
+                        <Text style={[styles.qrCaption, {marginTop: 15, fontWeight: '700'}]}>POWERED BY REVIEW BOOST 🚀</Text>
+                      </View>
+                    </View>
+                  </ViewShot>
 
                   <View style={styles.cardActions}>
                     <TouchableOpacity 
@@ -160,13 +206,12 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
 
                     <TouchableOpacity 
                       style={[styles.primaryButton, {backgroundColor: '#25D366'}]} // WhatsApp Green
-                      onPress={handleDownload}
+                      onPress={() => handleDownload(biz.id)}
                     >
                       <Text style={styles.primaryButtonText}>Download 📥</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              </ViewShot>
             );
           })
         )}

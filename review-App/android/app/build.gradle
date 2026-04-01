@@ -118,4 +118,4 @@ dependencies {
     }
 }
 
-apply plugin: "com.google.gms.google-services"
+// Firebase plugin removed - using direct Google Console Auth

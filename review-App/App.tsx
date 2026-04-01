@@ -23,8 +23,6 @@ import { OnboardingScreen } from './screens/OnboardingScreen';
 import { ReferralScreen } from './screens/ReferralScreen';
 import { API_BASE } from './constants';
 
-// Moved to constants.ts for central control
-
 const COLORS = {
   primary: '#0066FF',
   white: '#FFFFFF',
@@ -63,6 +61,7 @@ export interface PrivateReview {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   
   // Data State
@@ -70,21 +69,25 @@ function App() {
   const [privateReviews, setPrivateReviews] = useState<PrivateReview[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
-  // Initial Sync from Backend instead of local only
+  // Initial Sync from Backend
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const stored = await AsyncStorage.getItem('isLoggedIn');
-      const storedBiz = await AsyncStorage.getItem('activeBusinessId');
-      const onboarded = await AsyncStorage.getItem('hasOnboarded');
+      try {
+        const stored = await AsyncStorage.getItem('isLoggedIn');
+        const storedBiz = await AsyncStorage.getItem('activeBusinessId');
+        
+        // FORCED RESET FOR TESTING: Showing onboarding every time
+        setShowOnboarding(true); 
 
-      if (!onboarded) {
-        setShowOnboarding(true);
-      }
-
-      if (stored === 'true' && storedBiz) {
-        setIsLoggedIn(true);
-        setSelectedBusinessId(storedBiz);
-        fetchData(storedBiz);
+        if (stored === 'true' && storedBiz) {
+          setIsLoggedIn(true);
+          setSelectedBusinessId(storedBiz);
+          fetchData(storedBiz);
+        }
+      } catch (e) {
+        console.error('Auth check error:', e);
+      } finally {
+        setIsLoading(false);
       }
     };
     checkAuthStatus();
@@ -199,48 +202,23 @@ function App() {
   // ── Handle Hardware Back Button (Android) ──
   useEffect(() => {
     const backAction = () => {
-      // If we are on ANY screen except the Dashboard, go back to Dashboard
       if (currentScreen !== 'dashboard' && currentScreen !== 'login') {
         setCurrentScreen('dashboard');
-        return true; // "I handled it, don't exit the app!"
+        return true;
       }
-      return false; // "At Dashboard/Login? Standard behavior (Exit) is fine."
+      return false;
     };
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction,
-    );
-
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [currentScreen]);
 
   const renderScreen = () => {
-    if (showOnboarding) {
-       return <OnboardingScreen onFinish={handleFinishOnboarding} />;
+    if (isLoading) {
+      return null;
     }
 
-    // Customer Preview (internal review)
-    if (currentScreen === 'customer_review' && selectedBusinessId) {
-      const business = businesses[0];
-      if (business) {
-        return (
-          <CustomerReviewScreen
-            businessName={business.name}
-            googleReviewLink={business.googleReviewLink}
-            onSubmitPrivateReview={async (data) => {
-               // Post feedback to real backend
-               await fetch(`${API_BASE}/reviews`, {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({...data, businessId: business.id, customerPhone: data.number}),
-               });
-               fetchData(business.id); // Refresh owner list
-            }}
-            onGoBack={() => setCurrentScreen('qrcodes')}
-          />
-        );
-      }
+    if (showOnboarding) {
+       return <OnboardingScreen onFinish={handleFinishOnboarding} />;
     }
 
     if (!isLoggedIn) {
