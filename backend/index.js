@@ -129,14 +129,19 @@ app.post('/api/register', async (req, res) => {
       businessType: businessType || 'Both',
       privacyTier: privacyTier || '5-star',
       qrStyle: qrStyle || 'default',
+      credits: 7,
     });
 
     // If someone used a referral code — reward that referrer
     if (usedReferralCode) {
       const referrer = await Business.findOne({ where: { referralCode: usedReferralCode.trim().toUpperCase() } });
       if (referrer) {
+        // Award 100 pts to both
+        await referrer.increment('points', { by: 100 });
         await referrer.increment('referralCount', { by: 1 });
-        console.log(`Referral counted for: ${referrer.email}`);
+        await newBiz.increment('points', { by: 100 });
+        
+        console.log(`Referral points awarded to: ${referrer.email} & ${newBiz.email}`);
       }
     }
 
@@ -146,7 +151,6 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // Login
 app.post('/api/login', async (req, res) => {
   try {
@@ -165,6 +169,41 @@ app.post('/api/login', async (req, res) => {
     res.json({ business: biz });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Google Login
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+app.post('/api/google-login', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const email = payload['email'].toLowerCase().trim();
+
+    // Find business by email
+    let biz = await Business.findOne({ where: { email } });
+    
+    if (!biz) {
+      // First time Google user — they need to finish registration (manual location etc)
+      // For now, we return that they don't exist yet but we have their email
+      return res.status(200).json({ 
+        newUser: true, 
+        email, 
+        name: payload['name'],
+        message: 'Google verified. Please complete your business registration.' 
+      });
+    }
+
+    res.json({ business: biz });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(401).json({ error: 'Invalid Google Token' });
   }
 });
 
@@ -228,24 +267,20 @@ app.post('/api/reviews', async (req, res) => {
     const biz = await Business.findByPk(businessId);
     if (!biz) return res.status(404).json({ error: 'Business not found' });
 
-    // 2. Define review limits
-    const PLAN_LIMITS = {
-      'Free Trial': 5,
-      'Basic': 100,
-      'Standard': 500,
-      'Premium': 5000, // Effectively unlimited
-    };
+    // 2. Count current captured reviews (1-3 stars)
+    const reviewCount = await Review.count({ 
+      where: { 
+        businessId,
+        rating: { [require('sequelize').Op.lte]: 3 } // only count negative ones if that's the limit
+      } 
+    });
 
-    const currentLimit = PLAN_LIMITS[biz.plan] || 5;
-
-    // 3. Count current captured reviews (1-3 stars)
-    const reviewCount = await Review.count({ where: { businessId } });
-
-    if (reviewCount >= currentLimit) {
+    // 3. Check credits limit
+    if (reviewCount >= biz.credits) {
       return res.status(403).json({ 
-        error: 'Plan limit reached!', 
+        error: 'Limit reached!', 
         upgradeRequired: true,
-        message: `Your '${biz.plan}' plan allows for only ${currentLimit} captures. Please upgrade to continue receiving private feedback.`
+        message: `You have exhausted your ${biz.credits} review credits. Please contact Helonix on WhatsApp (+91 99997 28733) to upgrade and continue.`
       });
     }
 

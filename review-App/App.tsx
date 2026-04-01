@@ -7,6 +7,7 @@ import {
   StatusBar,
   StyleSheet,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,6 +20,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { CustomerReviewScreen } from './screens/CustomerReviewScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { ReferralScreen } from './screens/ReferralScreen';
 import { API_BASE } from './constants';
 
 // Moved to constants.ts for central control
@@ -44,6 +46,8 @@ export interface Business {
   businessType?: string;
   privacyTier?: string;
   qrStyle?: string;
+  points?: number;
+  credits?: number;
 }
 
 export interface PrivateReview {
@@ -185,6 +189,32 @@ function App() {
     await AsyncStorage.clear();
   };
 
+  const handleReset = async () => {
+    setIsLoggedIn(false);
+    setCurrentScreen('dashboard');
+    setShowOnboarding(true);
+    await AsyncStorage.clear();
+  };
+
+  // ── Handle Hardware Back Button (Android) ──
+  useEffect(() => {
+    const backAction = () => {
+      // If we are on ANY screen except the Dashboard, go back to Dashboard
+      if (currentScreen !== 'dashboard' && currentScreen !== 'login') {
+        setCurrentScreen('dashboard');
+        return true; // "I handled it, don't exit the app!"
+      }
+      return false; // "At Dashboard/Login? Standard behavior (Exit) is fine."
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [currentScreen]);
+
   const renderScreen = () => {
     if (showOnboarding) {
        return <OnboardingScreen onFinish={handleFinishOnboarding} />;
@@ -245,11 +275,18 @@ function App() {
         return <SettingsScreen 
           business={businesses[0]} 
           onLogout={handleLogout}
+          onReset={handleReset}
           onScreenChange={setCurrentScreen}
           onUpdateBusiness={handleUpdateProfile}
         />;
+      case 'referral':
+        return <ReferralScreen 
+          business={businesses[0]}
+          onScreenChange={setCurrentScreen}
+        />;
       default:
         return <DashboardScreen 
+          business={businesses[0]}
           reviews={privateReviews} 
           onScreenChange={setCurrentScreen} 
           logo={businesses[0]?.logo}

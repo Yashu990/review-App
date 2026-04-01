@@ -15,11 +15,9 @@ import {
   Linking,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import RazorpayCheckout from 'react-native-razorpay';
 import { Business } from '../App';
 
 const API_BASE_URL = 'http://103.142.175.170:7500';
-const RAZORPAY_KEY_ID = 'rzp_live_lqNwjPz8cC76Fx';
 
 const COLORS = {
   primary: '#0066FF',
@@ -34,20 +32,23 @@ const COLORS = {
   premium: '#6C4AB6',
 };
 
-// ── Contact details — change these to yours ──────────────────────────────────
-const CONTACT_PHONE    = '+918888888888'; // Your WhatsApp / support number
-const CONTACT_WA_MSG   = 'Hi! I need help with Review Boost app.';
-const TERMS_URL        = 'https://reviewboost.in/terms'; // Your terms URL
-const PLAY_STORE_URL   = 'market://details?id=com.reviewapp'; // Your Play Store package
+// ── Contact details — Helonix Official ─────────────────────────────────────────
+const CONTACT_PHONE    = '+919999728733'; // Helonix WhatsApp Support
+const SUPPORT_EMAIL    = 'Helonixgroup@gmail.com'; 
+const SUPPORT_INFO     = 'Info@helonix.com';
+const CONTACT_WA_MSG   = 'Hi Helonix! I need help with Review Boost app.';
+const WEBSITE_URL      = 'https://www.helonix.com';
+const PLAY_STORE_URL   = 'market://details?id=com.reviewboost';
 
 interface SettingsScreenProps {
   business?: Business;
   onLogout?: () => void;
+  onReset?: () => void;
   onScreenChange?: (screen: string) => void;
   onUpdateBusiness?: (business: Business) => Promise<void>;
 }
 
-export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBusiness }: SettingsScreenProps) {
+export function SettingsScreen({ business, onLogout, onReset, onScreenChange, onUpdateBusiness }: SettingsScreenProps) {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isUpgradeVisible, setIsUpgradeVisible]     = useState(false);
   const [loading, setLoading]                       = useState(false);
@@ -61,8 +62,20 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
   const [bizType, setBizType] = useState(business?.businessType || 'Both');
   const [privacyTier, setPrivacyTier] = useState(business?.privacyTier || '5-star');
   const [qrStyle, setQrStyle] = useState(business?.qrStyle || 'default');
+  const [language, setLanguage] = useState('English');
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Sync state when prop changes ──
+  React.useEffect(() => {
+    if (business?.logo) setLogoBase64(business.logo);
+    if (business?.name) setName(business.name);
+    if (business?.ownerName) setOwnerName(business.ownerName);
+    if (business?.ownerPhone) setOwnerPhone(business.ownerPhone);
+    if (business?.googleReviewLink) setGoogleLink(business.googleReviewLink);
+    if (business?.businessType) setBizType(business.businessType);
+    if (business?.privacyTier) setPrivacyTier(business.privacyTier);
+    if (business?.qrStyle) setQrStyle(business.qrStyle);
+  }, [business]);
+
   const pickImage = async () => {
     const result = await launchImageLibrary({ mediaType: 'photo', includeBase64: true, quality: 0.5 });
     if (result.assets && result.assets[0].base64) {
@@ -110,104 +123,25 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
     }
   };
 
-  const handleRefer = async () => {
-    let code = business?.referralCode;
-    if (!code && business?.id) {
-       try {
-         const res = await fetch(`${API_BASE_URL}/api/business/${business.id}/generate-referral`, { method: 'POST' });
-         if (res.ok) { const data = await res.json(); code = data.referralCode; if (onUpdateBusiness && business) await onUpdateBusiness({...business, referralCode: code}); }
-       } catch (e) { Alert.alert('Error', 'Could not generate referral code.'); return; }
-    }
-    if (code) {
-      const msg = `Hey! I'm using Review Boost. Use my code *${code}* and we both benefit! 🚀\nhttps://play.google.com/store/apps/details?id=com.reviewapp`;
-      Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() => Alert.alert('Referral Code', code));
-    }
+  const handleRefer = () => {
+    if (onScreenChange) onScreenChange('referral');
   };
 
   const handleContactUs = () => { Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=${encodeURIComponent(CONTACT_WA_MSG)}`).catch(() => Linking.openURL(`tel:${CONTACT_PHONE}`)); };
   const openGMB = () => { Linking.openURL(business?.googleReviewLink || 'https://business.google.com').catch(() => Alert.alert('Error', 'Link failed.')); };
 
-  const handleUpgradeSelect = async (plan: string, price: string) => {
-    if (!business?.id) {
-      Alert.alert('Error', 'User ID not found');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // 1. Create a Razorpay Order through the backend
-      const response = await fetch(`${API_BASE_URL}/api/payments/create-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(price),
-          receipt: `upgrade_plan_${business.id}_${Date.now()}`
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.description || errorData.details || 'Failed to create payment order');
-      }
-
-      const orderData = await response.json();
-
-      // 2. Options for Razorpay Checkout
-      const options = {
-        description: `Upgrade to ${plan} Plan`,
-        image: business.logo || 'https://reviewboost.in/logo.png', // Fallback Logo
-        currency: orderData.currency,
-        key: RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        name: 'Review Boost',
-        order_id: orderData.id,
-        prefill: {
-          email: business.email || '',
-          contact: business.ownerPhone || '',
-          name: business.ownerName || ''
-        },
-        theme: { color: COLORS.primary }
-      };
-
-      // 3. Open Razorpay Checkout
-      RazorpayCheckout.open(options).then(async (data: any) => {
-        // 4. Verify Payment on Success
-        const verifyRes = await fetch(`${API_BASE_URL}/api/payments/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: data.razorpay_order_id,
-            razorpay_payment_id: data.razorpay_payment_id,
-            razorpay_signature: data.razorpay_signature,
-            businessId: business.id,
-            planName: plan
-          }),
-        });
-
-        const verifyData = await verifyRes.json();
-        
-        if (verifyData.success) {
-          Alert.alert('Success', `Welcome to the ${plan} plan! 🚀`, [
-            { text: 'Awesome', onPress: () => {
-              if (onUpdateBusiness) onUpdateBusiness(verifyData.business);
-              setIsUpgradeVisible(false);
-            }}
-          ]);
-        } else {
-          Alert.alert('Error', 'Payment verification failed');
-        }
-      }).catch((error: any) => {
-        // Handle failure
-        console.log('Razorpay Error:', error);
-        Alert.alert('Error', `Payment failed: ${error.description || error.message || 'Cancelled'}`);
-      });
-
-    } catch (error: any) {
-      console.error('Payment Error:', error);
-      Alert.alert('Error', error.message || 'Could not initiate payment.');
-    } finally {
-      setLoading(false);
-    }
+  const handleUpgradeSelect = (plan: string, price: string) => {
+    const waMsg = `Hi Helonix! I want to upgrade to the *${plan}* plan (₹${price}/mo) for my business: *${business?.name}*. Please send me the payment details. 🚀`;
+    const waUrl = `whatsapp://send?phone=${CONTACT_PHONE}&text=${encodeURIComponent(waMsg)}`;
+    
+    Alert.alert(
+      'Upgrade via WhatsApp 🚀',
+      `Plan: ${plan}\nPrice: ₹${price}/mo\n\nTo upgrade, please contact us on WhatsApp or Email:\n\n📧 ${SUPPORT_EMAIL}\n📧 ${SUPPORT_INFO}\n📞 ${CONTACT_PHONE}`,
+      [
+        { text: 'Chat on WhatsApp 📱', onPress: () => Linking.openURL(waUrl) },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
   };
 
   return (
@@ -222,8 +156,8 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
 
         {/* ── Profile Header ── */}
         <View style={styles.profileHeader}>
-          <TouchableOpacity style={styles.avatarContainer} onPress={() => setIsEditModalVisible(true)}>
-            {business?.logo ? ( <Image source={{ uri: business.logo }} style={styles.avatarImage} /> ) : ( <Text style={styles.avatarText}>{business?.name?.charAt(0) || '?'}</Text> )}
+          <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
+            {logoBase64 ? ( <Image source={{ uri: logoBase64 }} style={styles.avatarImage} /> ) : ( <Text style={styles.avatarText}>{business?.name?.charAt(0) || '?'}</Text> )}
             <View style={styles.cameraBadge}><Text style={styles.cameraEmoji}>📸</Text></View>
           </TouchableOpacity>
           <Text style={styles.businessName}>{business?.name || 'Your Business'}</Text>
@@ -246,19 +180,27 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
 
         {/* ── Referral Stats Card (Horizontal) ── */}
         {business?.referralCode && (
-          <View style={styles.referralCard}>
+          <TouchableOpacity 
+            style={styles.referralCard} 
+            onPress={() => onScreenChange?.('referral')}
+          >
             <View style={styles.referralRow}>
-              <View style={styles.referralBox}>
+              <View style={[styles.referralBox, {flex: 1.2}]}>
                 <Text style={styles.referralBoxLabel}>Your Code</Text>
                 <Text style={styles.referralBoxCode}>{business.referralCode}</Text>
               </View>
               <View style={styles.refDivider} />
               <View style={styles.referralBox}>
-                <Text style={styles.referralBoxLabel}>Total Referrals</Text>
+                <Text style={styles.referralBoxLabel}>Points (Rs)</Text>
+                <Text style={[styles.referralBoxCount, {color: COLORS.success}]}>₹{business.points ?? 0}</Text>
+              </View>
+              <View style={styles.refDivider} />
+              <View style={styles.referralBox}>
+                <Text style={styles.referralBoxLabel}>Total Ref.</Text>
                 <Text style={styles.referralBoxCount}>{business.referralCount ?? 0}</Text>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
 
         {/* ── Programs and Products ── */}
@@ -270,15 +212,25 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
         </View>
 
         {/* ── Support & Info ── */}
-        <Text style={styles.sectionLabel}>Others</Text>
+        <Text style={styles.sectionLabel}>Support & Settings</Text>
         <View style={styles.menuSection}>
-          <MenuItem icon="📞" label="Contact Us"            onPress={handleContactUs} />
-          <MenuItem icon="📋" label="Terms and Conditions"  onPress={() => Linking.openURL(TERMS_URL)} />
+          <MenuItem icon="📞" label="Contact Helonix Support" onPress={handleContactUs} />
+          <MenuItem icon="📝" label="Give Us Feedback"        onPress={() => Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=I have a feedback for Review Boost: `)} />
+          <MenuItem icon="🌐" label="Language: English / हिन्दी" onPress={() => {
+            const newLang = language === 'English' ? 'Hindi' : 'English';
+            setLanguage(newLang);
+            Alert.alert('Language Updated', `The app language is now set to ${newLang} (UI Updates arriving soon!)`);
+          }} />
+          <MenuItem icon="📋" label="Terms and Conditions"  onPress={() => Linking.openURL(WEBSITE_URL)} />
           <MenuItem icon="🔄" label="Update App"            onPress={() => Linking.openURL(PLAY_STORE_URL)} last />
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
           <Text style={styles.logoutBtnText}>🚪  Log Out Account</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.logoutBtn, {backgroundColor: '#FFF8F0', marginTop: 0}]} onPress={onReset}>
+          <Text style={[styles.logoutBtnText, {color: '#E67E22'}]}>🛠️  Reset App & Setup</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -290,15 +242,25 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
                   <Text style={styles.upgradeTitle}>Choose Your Plan</Text>
                   <TouchableOpacity onPress={() => setIsUpgradeVisible(false)}><Text style={styles.closeX}>✕</Text></TouchableOpacity>
                </View>
+               
                <PlanItem name="Free Trial" price="0"    features={['5 Private Captures', 'Basic QR Code']} onPress={() => setIsUpgradeVisible(false)} />
                <PlanItem name="Basic"    price="499"  features={['100 Captures', 'Personalized Branding']} onPress={() => handleUpgradeSelect('Basic', '499')} />
                <PlanItem name="Standard" price="999"  features={['500 Captures', 'Priority Support', 'PDF Reports']} onPress={() => handleUpgradeSelect('Standard', '999')} color={COLORS.primary} popular />
                <PlanItem name="Premium"  price="1499" features={['Unlimited Captures', 'AI Auto-Reply', 'Advanced Analytics']} onPress={() => handleUpgradeSelect('Premium', '1499')} color={COLORS.premium} />
+               
+               <View style={styles.supportBox}>
+                 <Text style={styles.supportTitle}>Need Help? Contact Us:</Text>
+                 <Text style={styles.supportItem}>📧 {SUPPORT_EMAIL}</Text>
+                 <Text style={styles.supportItem}>📧 {SUPPORT_INFO}</Text>
+                 <TouchableOpacity style={styles.waButton} onPress={() => Linking.openURL(`whatsapp://send?phone=${CONTACT_PHONE}&text=Hi Helonix! I need help with plan upgrade.`)}>
+                    <Text style={styles.waButtonText}>Chat on WhatsApp 📱</Text>
+                 </TouchableOpacity>
+               </View>
             </View>
          </View>
       </Modal>
 
-      {/* Profile Edit Modal Logic kept from previous... */}
+      {/* Profile Edit Modal */}
       <Modal visible={isEditModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -307,6 +269,15 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)}><Text style={styles.closeModalText}>✕</Text></TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{paddingBottom: 50}}>
+               {/* ── Logo Picker In Modal ── */}
+               <View style={{alignItems: 'center', marginBottom: 20}}>
+                 <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
+                   {logoBase64 ? ( <Image source={{ uri: logoBase64 }} style={styles.avatarImage} /> ) : ( <Text style={styles.avatarText}>?</Text> )}
+                   <View style={styles.cameraBadge}><Text style={styles.cameraEmoji}>📸</Text></View>
+                 </TouchableOpacity>
+                 <Text style={{fontSize: 12, color: COLORS.mediumGray}}>Tap to change identity picture</Text>
+               </View>
+
                <Text style={styles.inputLabel}>Business Name</Text>
                <TextInput style={styles.input} value={name} onChangeText={setName} />
                <Text style={styles.inputLabel}>Owner Name</Text>
@@ -316,7 +287,6 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
                <Text style={styles.inputLabel}>Google Link</Text>
                <TextInput style={[styles.input, {height: 60}]} value={googleLink} onChangeText={setGoogleLink} multiline />
 
-               {/* New Edit Fields */}
                <Text style={styles.inputLabel}>Business Type</Text>
                <View style={styles.rowChoice}>
                   {['In Person', 'Remotely', 'Both'].map(t => (
@@ -326,8 +296,8 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
 
                <Text style={styles.inputLabel}>Privacy Tier (Minimum to show Google)</Text>
                <View style={styles.rowChoice}>
-                  {['5-star', '4-5-star', '3-4-5-star'].map(p => (
-                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === p && styles.miniBtnActive]} onPress={() => setPrivacyTier(p)}><Text style={[styles.miniBtnText, privacyTier === p && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
+                  {['5-star', '4-star'].map(p => (
+                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === (p === '4-star' ? '4-5-star' : p) && styles.miniBtnActive]} onPress={() => setPrivacyTier(p === '4-star' ? '4-5-star' : p)}><Text style={[styles.miniBtnText, privacyTier === (p === '4-star' ? '4-5-star' : p) && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
                   ))}
                </View>
 
@@ -339,7 +309,7 @@ export function SettingsScreen({ business, onLogout, onScreenChange, onUpdateBus
                </View>
 
                <TouchableOpacity style={styles.saveBtn} onPress={() => handleUpdate({
-                 name, ownerName, ownerPhone, googleReviewLink: googleLink, businessType: bizType, privacyTier, qrStyle
+                 name, ownerName, ownerPhone, googleReviewLink: googleLink, businessType: bizType, privacyTier, qrStyle, logo: logoBase64
                })}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
             </ScrollView>
           </View>
@@ -397,7 +367,6 @@ const styles = StyleSheet.create({
   editButton: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 16 },
   editButtonText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
 
-  // Subscription Plan UI
   planCard: { margin: 16, backgroundColor: COLORS.darkGray, borderRadius: 20, padding: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 6 },
   planLabel: { color: '#ffffff99', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   planBadge: { backgroundColor: '#ffffff22', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
@@ -405,7 +374,6 @@ const styles = StyleSheet.create({
   upgradeBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
   upgradeBtnText: { color: COLORS.white, fontWeight: '800', fontSize: 14 },
 
-  // Referral Card
   referralCard: { backgroundColor: COLORS.white, marginHorizontal: 16, borderRadius: 16, padding: 20, marginBottom: 10, elevation: 2 },
   referralRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   referralBox: { alignItems: 'center' },
@@ -414,7 +382,6 @@ const styles = StyleSheet.create({
   referralBoxCount: { fontSize: 20, fontWeight: '800', color: COLORS.darkGray, marginTop: 4 },
   refDivider: { width: 1, height: 30, backgroundColor: COLORS.lightBorder },
 
-  // List Menu
   sectionLabel: { fontSize: 12, fontWeight: '700', color: COLORS.mediumGray, textTransform: 'uppercase', marginTop: 20, marginBottom: 8, marginHorizontal: 20 },
   menuSection: { backgroundColor: COLORS.white, borderRadius: 16, marginHorizontal: 16, elevation: 1 },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: COLORS.lightBorder },
@@ -425,7 +392,6 @@ const styles = StyleSheet.create({
   logoutBtn: { margin: 20, padding: 16, borderRadius: 14, backgroundColor: '#FFF0F0', alignItems: 'center' },
   logoutBtnText: { color: '#FF4D4D', fontWeight: '700' },
 
-  // Overlay
   upgradeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   upgradeModal: { backgroundColor: '#fff', borderRadius: 28, padding: 24 },
   upgradeHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
@@ -440,7 +406,12 @@ const styles = StyleSheet.create({
   popularBadge: { position: 'absolute', top: -10, alignSelf: 'center', backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
   popularText: { color: '#fff', fontSize: 10, fontWeight: '900' },
 
-  // Bottom Nav
+  supportBox: { marginTop: 20, padding: 15, backgroundColor: '#F0F5FF', borderRadius: 16, alignItems: 'center' },
+  supportTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary, marginBottom: 10 },
+  supportItem: { fontSize: 13, color: '#444', marginBottom: 4, fontWeight: '600' },
+  waButton: { marginTop: 15, backgroundColor: '#25D366', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30 },
+  waButtonText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
   modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between' },

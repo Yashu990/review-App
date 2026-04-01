@@ -32,6 +32,8 @@ const Business = sequelize.define('Business', {
   businessType: { type: DataTypes.STRING, defaultValue: 'Both' }, // In Person, Remotely, Both
   privacyTier: { type: DataTypes.STRING, defaultValue: '5-star' }, // 5-star, 4-5-star
   qrStyle: { type: DataTypes.STRING, defaultValue: 'default' },
+  points: { type: DataTypes.INTEGER, defaultValue: 0 },
+  credits: { type: DataTypes.INTEGER, defaultValue: 7 },
 }, {
   timestamps: true,
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,9 +7,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Share,
   Alert,
 } from 'react-native';
+import ViewShot, { captureRef } from 'react-native-view-shot';
+import Share from 'react-native-share'; 
 import QRCode from 'react-native-qrcode-svg';
 import { Business } from '../App';
 
@@ -29,6 +30,8 @@ interface QRCodesScreenProps {
 }
 
 export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: QRCodesScreenProps) {
+  const [sharing, setSharing] = useState(false);
+  const viewShotRef = useRef<any>(null);
   
   const generateRealLink = (business: Business) => {
     const BASE_URL = "http://103.142.175.170:7500"; // Live Server
@@ -38,12 +41,54 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
   const handleShare = async (business: Business) => {
     const link = generateRealLink(business);
     try {
-      const result = await Share.share({
-        message: `Share your experience with ${business.name}! Give feedback here: ${link}`,
-        url: link, // For iOS support
+      await Share.open({
+        title: 'Share Feedback Link',
+        message: `Share your experience with ${business.name}! \n\nGive feedback here: \n${link}`,
+        url: link, 
       });
     } catch (error: any) {
-      Alert.alert(error.message);
+      if (error?.message?.includes('User did not share')) return;
+      console.log('Share Error:', error);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      setSharing(true);
+      const uri = await captureRef(viewShotRef, {
+        format: 'png',
+        quality: 1.0,
+      });
+
+      await Share.open({
+        title: 'Review Boost QR',
+        url: uri,
+        type: 'image/png',
+        failOnCancel: false,
+      });
+    } catch (error: any) {
+      console.error('Capture failed', error);
+      Alert.alert('Error', 'Could not capture QR image.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const getStyleColor = (style: string = 'default') => {
+    switch (style) {
+      case 'hearts': return '#FFEBEE';
+      case 'premium': return '#F3E5F5';
+      case 'beer': return '#FFF8E1';
+      default: return '#F1F7FF';
+    }
+  };
+
+  const getStyleIcon = (style: string = 'default') => {
+    switch (style) {
+      case 'hearts': return '❤️';
+      case 'beer': return '🍺';
+      case 'premium': return '✨';
+      default: return '⭐';
     }
   };
 
@@ -77,52 +122,51 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
           businesses.map((biz) => {
             const qrLink = generateRealLink(biz);
             return (
-              <View key={biz.id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.bizName}>{biz.name}</Text>
-                  <Text style={styles.ownerInfo}>Owner: {biz.ownerName}</Text>
-                </View>
-
-                <View style={styles.detailsBox}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Direct Link:</Text>
-                    <Text style={styles.detailValue} numberOfLines={1}>{qrLink}</Text>
+              <ViewShot key={biz.id} ref={viewShotRef} options={{ format: "png", quality: 1.0 }}>
+                <View style={[styles.card, {backgroundColor: getStyleColor(biz.qrStyle)}]}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.bizName}>{biz.name} {getStyleIcon(biz.qrStyle)}</Text>
+                    <Text style={styles.ownerInfo}>Scan to Review our Business</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Redirects to Google Review Link</Text>
+
+                  <View style={styles.qrContainer}>
+                    <QRCode
+                      value={qrLink}
+                      size={200}
+                      color="black"
+                      backgroundColor={COLORS.white}
+                      logo={biz.logo ? { uri: biz.logo } : undefined}
+                      logoSize={50}
+                      logoBorderRadius={12}
+                      logoBackgroundColor={COLORS.white}
+                    />
+                    <Text style={[styles.qrCaption, {marginTop: 15, fontWeight: '700'}]}>POWERED BY REVIEW BOOST 🚀</Text>
+                  </View>
+
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity 
+                      style={styles.secondaryButton}
+                      onPress={() => onSelectBusiness(biz.id)}
+                    >
+                      <Text style={styles.secondaryButtonText}>Preview Page</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.primaryButton}
+                      onPress={() => handleShare(biz)}
+                    >
+                      <Text style={styles.primaryButtonText}>Share Link</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.primaryButton, {backgroundColor: '#25D366'}]} // WhatsApp Green
+                      onPress={handleDownload}
+                    >
+                      <Text style={styles.primaryButtonText}>Download 📥</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                <View style={styles.qrContainer}>
-                  <QRCode
-                    value={qrLink}
-                    size={200}
-                    color="black"
-                    backgroundColor={COLORS.white}
-                    logo={biz.logo ? { uri: biz.logo } : undefined}
-                    logoSize={45}
-                    logoBorderRadius={10}
-                    logoBackgroundColor={COLORS.white}
-                  />
-                  <Text style={styles.qrCaption}>Scan to Review</Text>
-                </View>
-
-                <View style={styles.cardActions}>
-                  <TouchableOpacity 
-                    style={styles.secondaryButton}
-                    onPress={() => onSelectBusiness(biz.id)}
-                  >
-                    <Text style={styles.secondaryButtonText}>Preview Live Page</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.primaryButton}
-                    onPress={() => handleShare(biz)}
-                  >
-                    <Text style={styles.primaryButtonText}>Share Smart Link</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </ViewShot>
             );
           })
         )}

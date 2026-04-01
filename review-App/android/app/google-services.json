@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "490330363547",
+    "project_id": "reviewboost-2b865",
+    "storage_bucket": "reviewboost-2b865.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:490330363547:android:0b1c7834576b7f9933583e",
+        "android_client_info": {
+          "package_name": "com.reviewapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "490330363547-fte79psjec8f3cek97mc0echju7dt2s2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPwUFRfZf-4w8nFiMXLwRBous9ROUUXWU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "490330363547-fte79psjec8f3cek97mc0echju7dt2s2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

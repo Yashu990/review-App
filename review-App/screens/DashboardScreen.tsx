@@ -88,19 +88,24 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
             </View>
           </View>
         )}
-
         {/* Stats Summary */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Captured (1-3★)</Text>
             <Text style={styles.statValue}>{totalReviews}</Text>
-            <Text style={styles.statHint}>Action Required</Text>
+            <Text style={[styles.statHint, {color: COLORS.error}]}>Action Required</Text>
           </View>
 
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Avg captured rating</Text>
-            <Text style={styles.statValue}>{avgRating} ★</Text>
+            <Text style={styles.statValue}>{avgRating}★</Text>
             <Text style={styles.statHint}>Internal Score</Text>
+          </View>
+
+          <View style={[styles.statCard, {backgroundColor: '#E8F5E9', borderColor: '#4CAF50', borderWidth: 1}]}>
+            <Text style={[styles.statLabel, {color: '#2E7D32'}]}>Review Credits</Text>
+            <Text style={[styles.statValue, {color: '#2E7D32'}]}>{Math.max(0, (business?.credits ?? 7) - totalReviews)}</Text>
+            <Text style={[styles.statHint, {color: '#4CAF50'}]}>Remaining</Text>
           </View>
         </View>
 

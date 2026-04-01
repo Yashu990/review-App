@@ -7,11 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #FF5A8F; /* Pink accent from screenshot */
-            --bg: #EEF4FF; /* Light blue background */
+            --primary: #0066FF; /* Match Mobile App Blue */
+            --bg: #F0F7FF; /* Very light blue tint */
             --text-dark: #1A202C;
             --text-gray: #718096;
-            --border: #E2E8F0;
+            --border: #DDE8F9;
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -279,8 +279,10 @@
 
                 if (isHighRating) {
                     if (googleLink) {
-                        alert("We're glad you liked us! Opening our Google Review page...");
-                        window.location.href = googleLink;
+                        // Delay 300ms so user sees stars light up
+                        setTimeout(() => {
+                           window.location.href = googleLink;
+                        }, 300);
                     } else {
                         form.style.display = 'flex';
                     }

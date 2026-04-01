@@ -18,6 +18,12 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { Business } from '../App';
 import { API_BASE } from '../constants';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+
+// ── Google Sign-In Config placeholder ────────────────────────────────────────
+// Once you get your WEB_CLIENT_ID from Firebase Console -> Project Settings
+// Add it here. This is REQUIRED for both Android/iOS to work.
+GoogleSignin.configure({ webClientId: '490330363547-fte79psjec8f3cek97mc0echju7dt2s2.apps.googleusercontent.com' });
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,11 +65,16 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [ownerPhone, setOwnerPhone] = useState('');
 
   useEffect(() => {
     const onBackPress = () => {
       if (view === 'register') {
-        if (regStep > 0) {
+        if (regStep === 7) {
+          setRegStep(1); // Manual -> Search
+          return true;
+        } else if (regStep > 0) {
           setRegStep(prev => prev - 1);
           return true;
         } else {
@@ -86,7 +97,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
       id: Math.random().toString(36).substr(2, 9),
       name: bizName || 'New Business',
       ownerName: ownerName || 'Owner',
-      ownerPhone: 'N/A', // Collected during Search simulation usually
+      ownerPhone: ownerPhone || 'N/A', 
       googleReviewLink: link || 'https://google.com',
       email: regEmail,
       password: regPassword,
@@ -98,6 +109,41 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
 
   const nextRegStep = () => setRegStep(regStep + 1);
   const prevRegStep = () => setRegStep(Math.max(0, regStep - 1));
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
+
+      if (!idToken) throw new Error('No ID Token found');
+
+      const response = await fetch(`${API_BASE}/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+      if (data.newUser) {
+        setRegEmail(data.email);
+        setView('register');
+        setRegStep(0); // Start from business location
+        Alert.alert('Google Verified', 'Just a few more details to set up your business! 🚀');
+      } else if (data.business) {
+        onRegister(data.business); // Effectively logs them in
+      }
+    } catch (error: any) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // Already in progress
+      } else {
+        console.error('Google Error:', error);
+        Alert.alert('Google Sign-In Error', `Details: ${error.message || error.code || 'Unknown Error'}. \n\nPlease ensure your SHA-1 is saved in Firebase and your Web Client ID is correct.`);
+      }
+    }
+  };
 
   // ──── MAIN VIEWS ────
 
@@ -115,7 +161,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
                   <View style={styles.miniStars}><Text style={{fontSize: 14}}>⭐⭐⭐⭐⭐</Text></View>
                </View>
             </View>
-            <TouchableOpacity style={styles.googleBtn} onPress={() => Alert.alert('Notice', 'Google login coming soon!')}>
+            <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleLogin}>
                <View style={styles.googleIconBox}><Text style={styles.googleTextIcon}>G</Text></View>
                <Text style={styles.googleBtnText}>Sign in with Google</Text>
             </TouchableOpacity>
@@ -273,6 +319,18 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
                )}
             </View>
           )}
+
+          <TouchableOpacity 
+            style={{marginTop: 15, padding: 10}} 
+            onPress={() => {
+              setIsManualEntry(true);
+              setBizName(''); 
+              setLink(''); 
+              setRegStep(7); // Jump to Manual Entry
+            }}
+          >
+            <Text style={{color: COLORS.primary, fontWeight: '700', textAlign: 'center'}}>Can't find your business? Enter manually →</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.mapMock}>
           <Text style={styles.mapText}>📍 {bizName || 'Search above to find location'}</Text>
@@ -281,6 +339,63 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
         <TouchableOpacity style={styles.floatNext} onPress={nextRegStep}>
           <Text style={styles.whiteBtnText}>Next</Text>
         </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  // 7: Manual Business Entry
+  if (regStep === 7) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtnWrapper} onPress={() => setRegStep(1)} hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerLabel}>Manual Entry</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.onboardTitle}>Enter your business{'\n'}details manually</Text>
+          <Text style={styles.onboardSub}>We'll use these details to generate your review QR code.</Text>
+
+          <Text style={styles.settingLabel}>Business Name</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. Helonix Solutions" 
+            value={bizName} 
+            onChangeText={setBizName} 
+          />
+
+          <Text style={styles.settingLabel}>Google Review Link / Map Link</Text>
+          <TextInput 
+            style={[styles.input, {height: 80}]} 
+            placeholder="Paste your Google map link here" 
+            value={link} 
+            onChangeText={setLink} 
+            multiline
+          />
+
+          <Text style={styles.settingLabel}>Business Phone Number</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. +91 99997 28733" 
+            value={ownerPhone} 
+            onChangeText={setOwnerPhone} 
+            keyboardType="phone-pad"
+          />
+
+          <TouchableOpacity 
+            style={[styles.blackBtn, {marginTop: 20}]} 
+            onPress={() => {
+              if(!bizName || !link) {
+                 Alert.alert('Missing Info', 'Please enter at least the Business Name and Map Link.');
+                 return;
+              }
+              setRegStep(2); // Continue to Business Type
+            }}
+          >
+            <Text style={styles.whiteBtnText}>Save & Continue →</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -328,7 +443,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.onboardSub}>Welcome {ownerName || 'User'}</Text>
-          <Text style={styles.onboardTitle}>All reviews stay private in ReviewUP!</Text>
+          <Text style={styles.onboardTitle}>All reviews stay private in Review Boost!</Text>
           <Text style={styles.onboardSub}>Choose what to share on {'\n'}<Text style={{color: '#4285F4'}}>G</Text><Text style={{color: '#EA4335'}}>o</Text><Text style={{color: '#FBBC05'}}>o</Text><Text style={{color: '#4285F4'}}>g</Text><Text style={{color: '#34A853'}}>l</Text><Text style={{color: '#EA4335'}}>e</Text></Text>
 
           <TouchableOpacity style={[styles.settingCard, privacyTier === '5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('5-star')}>
@@ -337,14 +452,11 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
           </TouchableOpacity>
           
           <TouchableOpacity style={[styles.settingCard, privacyTier === '4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('4-5-star')}>
-            <Text style={styles.settingLabel}>4 & 5-star reviews</Text>
+            <Text style={styles.settingLabel}>4-star reviews</Text>
             <Text style={{fontSize: 20}}>⭐⭐⭐⭐</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.settingCard, privacyTier === '3-4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('3-4-5-star')}>
-            <Text style={styles.settingLabel}>3, 4 & 5-star reviews</Text>
-            <Text style={{fontSize: 20}}>⭐⭐⭐</Text>
-          </TouchableOpacity>
+
 
           <View style={{height: 100}} />
           <TouchableOpacity style={styles.blackBtn} onPress={nextRegStep}><Text style={styles.whiteBtnText}>Next</Text></TouchableOpacity>
@@ -444,15 +556,19 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
           <Text style={styles.onboardTitle}>Print or download your QR code</Text>
           <Text style={styles.onboardSub}>Let customers scan it and leave feedback for you</Text>
 
-          <View style={styles.finalQrCard}>
-             <Text style={styles.finalBizName}>{bizName || 'Xenocipher Pvt Ltd'}</Text>
+          <View style={[styles.finalQrCard, { backgroundColor: qrStyle === 'hearts' ? '#FFF0F5' : qrStyle === 'beer' ? '#FFF8E1' : '#fff' }]}>
+             <Text style={styles.finalBizName}>{bizName || 'Review Boost User'}</Text>
              <Text style={styles.cursiveText}>Leave us a Review</Text>
-             <View style={styles.finalQrFrame}>
-                <View style={styles.frameIcon}><Text style={{fontSize: 60}}>{qrStyle === 'beer' ? '🍺' : '📱'}</Text></View>
-                <View style={styles.realQrMock}>
-                   <QRCode value={`https://google.com`} size={80} color="black" backgroundColor="white" />
+             <View style={[styles.finalQrFrame, { borderColor: qrStyle === 'hearts' ? '#FF69B4' : qrStyle === 'beer' ? '#FFA000' : '#000' }]}>
+                <View style={styles.frameIcon}>
+                  <Text style={{fontSize: 60}}>
+                    {qrStyle === 'hearts' ? '❤️' : qrStyle === 'beer' ? '🍺' : qrStyle === 'shop' ? '🛍️' : qrStyle === 'gift' ? '🎁' : '📱'}
+                  </Text>
                 </View>
-                <View style={styles.scanMeBadge}><Text style={styles.scanMeText}>SCAN ME</Text></View>
+                <View style={styles.realQrMock}>
+                   <QRCode value={link || `https://google.com`} size={80} color="black" backgroundColor="white" />
+                </View>
+                <View style={[styles.scanMeBadge, { backgroundColor: qrStyle === 'hearts' ? '#FF69B4' : qrStyle === 'beer' ? '#FFA000' : '#000' }]}><Text style={styles.scanMeText}>SCAN ME</Text></View>
              </View>
           </View>
 
