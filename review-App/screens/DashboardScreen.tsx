@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { PrivateReview, Business } from '../App';
+import { PrivateReview, Business, isTrialExpired } from '../App';
 import { SERVER_URL } from '../constants';
 
 const COLORS = {
@@ -45,6 +45,8 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
       onScreenChange(tab);
     }
   };
+  
+  const trial = isTrialExpired(business);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,6 +72,28 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
             )}
           </TouchableOpacity>
         </View>
+        
+        {/* ── Trial Status Banner ── */}
+        {business?.plan === 'Free Trial' && (
+          <View style={[styles.trialBanner, trial.expired && styles.expiredBanner]}>
+             <View style={{flex: 1}}>
+                <Text style={styles.trialTitle}>
+                   {trial.expired ? 'Trial Expired ⚠️' : `Free Trial: ${trial.daysLeft} Days Left`}
+                </Text>
+                <Text style={styles.trialSub}>
+                   {trial.expired 
+                      ? 'Your QR code is currently inactive. Upgrade to reactivate.' 
+                      : 'You have full access to all features for 7 days.'}
+                </Text>
+             </View>
+             <TouchableOpacity 
+                style={styles.trialUpgradeBtn}
+                onPress={() => handleTabChange('settings')}
+             >
+                <Text style={styles.trialUpgradeText}>{trial.expired ? 'Upgrade' : 'Get Full'}</Text>
+             </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── NEW: Instant QR Code Section ── */}
         {business?.id && (
@@ -241,4 +265,22 @@ const styles = StyleSheet.create({
   qrLabel: { color: COLORS.white, fontSize: 18, fontWeight: '800', marginBottom: 4 },
   qrSub: { color: '#ffffffcc', fontSize: 11, fontWeight: '500', lineHeight: 16 },
   qrBox: { backgroundColor: COLORS.white, padding: 8, borderRadius: 12 },
+  trialBanner: { 
+    backgroundColor: '#FFF4E5', 
+    padding: 16, 
+    borderRadius: 16, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFD599',
+  },
+  expiredBanner: {
+    backgroundColor: '#FFE5E5',
+    borderColor: '#FFB2B2',
+  },
+  trialTitle: { fontSize: 16, fontWeight: '800', color: COLORS.darkGray },
+  trialSub: { fontSize: 12, color: COLORS.mediumGray, marginTop: 2 },
+  trialUpgradeBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, marginLeft: 10 },
+  trialUpgradeText: { color: COLORS.white, fontWeight: '700', fontSize: 12 },
 });

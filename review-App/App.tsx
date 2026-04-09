@@ -21,6 +21,7 @@ import { CustomerReviewScreen } from './screens/CustomerReviewScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { ReferralScreen } from './screens/ReferralScreen';
+import { LegalScreen } from './screens/LegalScreen';
 import { API_BASE } from './constants';
 
 const COLORS = {
@@ -46,6 +47,7 @@ export interface Business {
   qrStyle?: string;
   points?: number;
   credits?: number;
+  createdAt?: string;
 }
 
 export interface PrivateReview {
@@ -56,6 +58,21 @@ export interface PrivateReview {
   comment: string;
   rating: number;
   timestamp: number;
+}
+
+export function isTrialExpired(business?: Business): { expired: boolean; daysLeft: number } {
+  if (!business || business.plan !== 'Free Trial') return { expired: false, daysLeft: 7 };
+  
+  const createdDate = business.createdAt ? new Date(business.createdAt) : new Date();
+  const now = new Date();
+  const diffTime = now.getTime() - createdDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const daysLeft = Math.max(0, 7 - diffDays);
+  
+  return {
+    expired: daysLeft <= 0,
+    daysLeft: daysLeft
+  };
 }
 
 function App() {
@@ -75,9 +92,12 @@ function App() {
       try {
         const stored = await AsyncStorage.getItem('isLoggedIn');
         const storedBiz = await AsyncStorage.getItem('activeBusinessId');
-        
-        // FORCED RESET FOR TESTING: Showing onboarding every time
-        setShowOnboarding(true); 
+        const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
+
+        // Only show onboarding if the user has NEVER completed it before
+        if (hasOnboarded !== 'true') {
+          setShowOnboarding(true); 
+        }
 
         if (stored === 'true' && storedBiz) {
           setIsLoggedIn(true);
@@ -262,6 +282,34 @@ function App() {
           business={businesses[0]}
           onScreenChange={setCurrentScreen}
         />;
+      case 'customer_review':
+        const activeBiz = businesses.find(b => b.id === selectedBusinessId) || businesses[0];
+        return <CustomerReviewScreen 
+          businessName={activeBiz.name}
+          googleReviewLink={activeBiz.googleReviewLink}
+          privacyTier={activeBiz.privacyTier || '5-star'}
+          onGoBack={() => setCurrentScreen('qrcodes')}
+          onSubmitPrivateReview={async (data) => {
+            try {
+              const res = await fetch(`${API_BASE}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, businessId: selectedBusinessId || activeBiz.id }),
+              });
+              if (res.ok) {
+                Alert.alert('Success', 'Feedback sent successfully!');
+                setCurrentScreen('qrcodes');
+                fetchData(selectedBusinessId || activeBiz.id);
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to send feedback');
+            }
+          }}
+        />;
+      case 'legal_privacy':
+        return <LegalScreen type="privacy" onBack={() => setCurrentScreen('settings')} />;
+      case 'legal_about':
+        return <LegalScreen type="about" onBack={() => setCurrentScreen('settings')} />;
       default:
         return <DashboardScreen 
           business={businesses[0]}

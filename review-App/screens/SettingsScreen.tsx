@@ -15,7 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { Business } from '../App';
+import { Business, isTrialExpired } from '../App';
 
 const API_BASE_URL = 'http://103.142.175.170:7500';
 
@@ -64,6 +64,8 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
   const [privacyTier, setPrivacyTier] = useState(business?.privacyTier || '5-star');
   const [qrStyle, setQrStyle] = useState(business?.qrStyle || 'default');
   const [language, setLanguage] = useState('English');
+  
+  const trial = isTrialExpired(business);
 
   // ── Sync state when prop changes ──
   React.useEffect(() => {
@@ -131,13 +133,13 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
   const handleContactUs = () => { Linking.openURL(`https://wa.me/${CONTACT_PHONE_CLEAN}?text=${encodeURIComponent(CONTACT_WA_MSG)}`).catch(() => Linking.openURL(`tel:${CONTACT_PHONE}`)); };
   const openGMB = () => { Linking.openURL(business?.googleReviewLink || 'https://business.google.com').catch(() => Alert.alert('Error', 'Link failed.')); };
 
-  const handleUpgradeSelect = (plan: string, price: string) => {
-    const waMsg = `Hi Helonix! I want to upgrade to the *${plan}* plan (₹${price}/mo) for my business: *${business?.name}*. Please send me the payment details. 🚀`;
+  const handleUpgradeSelect = (plan: string, credits: string) => {
+    const waMsg = `Hi Helonix! I want to upgrade to the *${plan}* plan (${credits} Credits) for my business: *${business?.name}*. Please send me the payment details. 🚀`;
     const waUrl = `https://wa.me/${CONTACT_PHONE_CLEAN}?text=${encodeURIComponent(waMsg)}`;
     
     Alert.alert(
       'Upgrade via WhatsApp 🚀',
-      `Plan: ${plan}\nPrice: ₹${price}/mo\n\nTo upgrade, please contact us on WhatsApp or Email:\n\n📧 ${SUPPORT_EMAIL}\n📧 ${SUPPORT_INFO}\n📞 ${CONTACT_PHONE}`,
+      `Plan: ${plan}\nCredits: ${credits}\n\nTo upgrade, please contact us on WhatsApp or Email:\n\n📧 ${SUPPORT_EMAIL}\n📧 ${SUPPORT_INFO}\n📞 ${CONTACT_PHONE}`,
       [
         { text: 'Chat on WhatsApp 📱', onPress: () => Linking.openURL(waUrl) },
         { text: 'Cancel', style: 'cancel' }
@@ -171,7 +173,10 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
            <View>
               <Text style={styles.planLabel}>Current Plan</Text>
               <View style={styles.planBadge}>
-                 <Text style={styles.planName}>{business?.plan || 'Free Trial'}</Text>
+                 <Text style={styles.planName}>
+                    {business?.plan || 'Free Trial'}
+                    {business?.plan === 'Free Trial' && ` (${trial.expired ? 'Expired' : `${trial.daysLeft}d left`})`}
+                 </Text>
               </View>
            </View>
            <TouchableOpacity style={styles.upgradeBtn} onPress={() => setIsUpgradeVisible(true)}>
@@ -222,7 +227,8 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
             setLanguage(newLang);
             Alert.alert('Language Updated', `The app language is now set to ${newLang} (UI Updates arriving soon!)`);
           }} />
-          <MenuItem icon="📋" label="Terms and Conditions"  onPress={() => Linking.openURL(WEBSITE_URL)} />
+          <MenuItem icon="📋" label="Privacy Policy"         onPress={() => onScreenChange?.('legal_privacy')} />
+          <MenuItem icon="ℹ️" label="About This App"         onPress={() => onScreenChange?.('legal_about')} />
           <MenuItem icon="🔄" label="Update App"            onPress={() => Linking.openURL(PLAY_STORE_URL)} last />
         </View>
 
@@ -244,10 +250,10 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
                   <TouchableOpacity onPress={() => setIsUpgradeVisible(false)}><Text style={styles.closeX}>✕</Text></TouchableOpacity>
                </View>
                
-               <PlanItem name="Free Trial" price="0"    features={['5 Private Captures', 'Basic QR Code']} onPress={() => setIsUpgradeVisible(false)} />
-               <PlanItem name="Basic"    price="499"  features={['100 Captures', 'Personalized Branding']} onPress={() => handleUpgradeSelect('Basic', '499')} />
-               <PlanItem name="Standard" price="999"  features={['500 Captures', 'Priority Support', 'PDF Reports']} onPress={() => handleUpgradeSelect('Standard', '999')} color={COLORS.primary} popular />
-               <PlanItem name="Premium"  price="1499" features={['Unlimited Captures', 'AI Auto-Reply', 'Advanced Analytics']} onPress={() => handleUpgradeSelect('Premium', '1499')} color={COLORS.premium} />
+               <PlanItem name="Free Trial" credits="5"       features={['Private Captures', 'Basic QR Code']} onPress={() => setIsUpgradeVisible(false)} />
+               <PlanItem name="Basic"      credits="100"     features={['Captures', 'Personalized Branding']} onPress={() => handleUpgradeSelect('Basic', '100')} />
+               <PlanItem name="Standard"   credits="500"     features={['Captures', 'Priority Support', 'PDF Reports']} onPress={() => handleUpgradeSelect('Standard', '500')} color={COLORS.primary} popular />
+               <PlanItem name="Premium"    credits="Unlimited" features={['Captures', 'AI Auto-Reply', 'Advanced Analytics']} onPress={() => handleUpgradeSelect('Premium', 'Unlimited')} color={COLORS.premium} />
                
                <View style={styles.supportBox}>
                  <Text style={styles.supportTitle}>Need Help? Contact Us:</Text>
@@ -338,7 +344,7 @@ function MenuItem({ icon, label, onPress, last }: any) {
   );
 }
 
-function PlanItem({ name, price, features, onPress, color, popular }: any) {
+function PlanItem({ name, credits, features, onPress, color, popular }: any) {
    return (
       <TouchableOpacity style={[styles.planItem, popular && {borderColor: COLORS.primary, borderWidth: 2}]} onPress={onPress}>
          {popular && <View style={styles.popularBadge}><Text style={styles.popularText}>BEST VALUE</Text></View>}
@@ -347,8 +353,8 @@ function PlanItem({ name, price, features, onPress, color, popular }: any) {
             <Text style={styles.planItemFeatures}>{features.join(' • ')}</Text>
          </View>
          <View style={styles.priceTag}>
-            <Text style={styles.priceAmount}>₹{price}</Text>
-            <Text style={styles.priceCycle}>/mo</Text>
+            <Text style={styles.priceAmount}>{credits}</Text>
+            <Text style={styles.priceCycle}>Credits</Text>
          </View>
       </TouchableOpacity>
    );

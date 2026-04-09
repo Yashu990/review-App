@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Boost | Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0F172A; color: #F8FAFC; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-hover:hover { transform: translateY(-4px); transition: all 0.3s ease; box-shadow: 0 10px 30px -10px rgba(0, 102, 255, 0.3); }
+        .gradient-text { background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen overflow-x-hidden p-4 md:p-8">
+
+    <!-- Login Overlay -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-[100]">
+        <div class="glass max-w-md w-full p-10 rounded-[2.5rem] shadow-2xl">
+            <h1 class="text-3xl font-extrabold mb-2">Admin <span class="gradient-text">Login</span></h1>
+            <p class="text-slate-400 mb-8">Secure access to Review Boost Portal</p>
+            
+            <div class="space-y-4">
+                <input type="email" id="loginEmail" placeholder="Admin Email" class="w-full bg-slate-800 border-none px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                <input type="password" id="loginPass" placeholder="Password" class="w-full bg-slate-800 border-none px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 mt-4">Sign In</button>
+            </div>
+            <div class="mt-6 text-center">
+                <button onclick="showForgot()" class="text-slate-500 hover:text-blue-400 text-sm transition-colors">Forgot Password?</button>
+            </div>
+            <p id="loginError" class="text-red-400 text-sm mt-4 text-center hidden">Invalid credentials. Try again.</p>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4 z-[110]">
+        <div class="glass max-w-sm w-full p-8 rounded-[2rem] text-center">
+            <div class="w-16 h-16 bg-blue-500/10 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">🔑</div>
+            <h2 class="text-2xl font-bold mb-2">Forgot Password?</h2>
+            <p class="text-slate-400 mb-8 text-sm leading-relaxed">For security, Admin passwords are managed via the server configuration. Please contact the technical developer or check the <code class="bg-slate-800 px-2 py-1 rounded text-blue-400">.env</code> file on the server.</p>
+            <button onclick="hideForgot()" class="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold transition-all">Back to Login</button>
+        </div>
+    </div>
+
+    <div id="adminContent" class="max-w-6xl mx-auto hidden">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tight mb-2">Review Boost <span class="gradient-text">Admin</span></h1>
+                <p class="text-slate-400">Manage businesses, upgrades, and review credits.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="logout()" class="text-slate-400 hover:text-white font-bold px-4 py-2 border border-slate-700 rounded-xl transition-all">Logout</button>
+                <button onclick="fetchBusinesses()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95">Refresh Data</button>
+            </div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 text-sm font-semibold mb-1">TOTAL BUSINESSES</p>
+                <h3 id="totalBiz" class="text-3xl font-bold">--</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 text-sm font-semibold mb-1">PREMIUM USERS</p>
+                <h3 id="premiumBiz" class="text-3xl font-bold text-blue-400">--</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <p class="text-slate-400 text-sm font-semibold mb-1">TRIAL EXPIRED</p>
+                <h3 id="expiredBiz" class="text-3xl font-bold text-orange-400">--</h3>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="mb-8">
+            <input type="text" id="bizSearch" oninput="filterBusinesses()" placeholder="Search by Business Name or Email..." class="glass w-full px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+        </div>
+
+        <!-- Business List -->
+        <div id="bizList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Loading State -->
+            <div class="col-span-full py-20 text-center">
+                <p class="text-slate-500 italic">Enter secret key and click refresh to load data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade Modal -->
+    <div id="upgradeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="glass max-w-md w-full p-8 rounded-[2rem] shadow-2xl">
+            <h2 class="text-2xl font-bold mb-2">Upgrade Business</h2>
+            <p id="modalBizName" class="text-blue-400 font-semibold mb-6">--</p>
+            
+            <input type="hidden" id="modalBizId">
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-400 mb-2">PLAN TYPE</label>
+                    <select id="modalPlan" class="w-full bg-slate-800 border-none px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                        <option value="Free Trial">Free Trial</option>
+                        <option value="Basic">Basic</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Premium">Premium</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-400 mb-2">REVIEW CREDITS</label>
+                    <input type="number" id="modalCredits" class="w-full bg-slate-800 border-none px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                </div>
+                <div class="flex gap-4 pt-4">
+                    <button onclick="closeModal()" class="flex-1 px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-colors">Cancel</button>
+                    <button onclick="saveChanges()" class="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allBusinesses = [];
+        let authToken = sessionStorage.getItem('adminToken');
+
+        // Check if already logged in
+        if (authToken) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('adminContent').classList.remove('hidden');
+            fetchBusinesses();
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPass').value;
+            const errorEl = document.getElementById('loginError');
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    authToken = data.adminToken;
+                    sessionStorage.setItem('adminToken', authToken);
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('adminContent').classList.remove('hidden');
+                    fetchBusinesses();
+                    errorEl.classList.add('hidden');
+                } else {
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                alert('Connection error');
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('adminToken');
+            location.reload();
+        }
+
+        function showForgot() {
+            document.getElementById('forgotModal').style.display = 'flex';
+        }
+
+        function hideForgot() {
+            document.getElementById('forgotModal').style.display = 'none';
+        }
+
+        async function fetchBusinesses() {
+            if (!authToken) return;
+
+            try {
+                const res = await fetch('/api/admin/businesses', {
+                    headers: { 'x-admin-secret': authToken }
+                });
+                if (!res.ok) {
+                    if (res.status === 403) logout();
+                    throw new Error(await res.text());
+                }
+                
+                allBusinesses = await res.json();
+                updateStats();
+                renderBusinesses(allBusinesses);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalBiz').innerText = allBusinesses.length;
+            document.getElementById('premiumBiz').innerText = allBusinesses.filter(b => b.plan !== 'Free Trial').length;
+            
+            const countExpired = allBusinesses.filter(b => {
+                const created = b.createdAt ? new Date(b.createdAt) : new Date();
+                const diff = (new Date() - created) / (1000 * 60 * 60 * 24);
+                return b.plan === 'Free Trial' && diff > 7;
+            }).length;
+            document.getElementById('expiredBiz').innerText = countExpired;
+        }
+
+        function renderBusinesses(list) {
+            const container = document.getElementById('bizList');
+            if (list.length === 0) {
+                container.innerHTML = '<div class="col-span-full py-20 text-center text-slate-500 italic">No businesses found.</div>';
+                return;
+            }
+            container.innerHTML = list.map(b => {
+                const createdDate = b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'N/A';
+                const isExpired = b.plan === 'Free Trial' && (new Date() - new Date(b.createdAt)) / (1000 * 60 * 60 * 24) > 7;
+
+                return `
+                    <div class="glass p-6 rounded-3xl card-hover relative overflow-hidden">
+                        ${isExpired ? '<div class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">EXPIRED</div>' : ''}
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <h4 class="text-xl font-bold text-white truncate pr-4">${b.name}</h4>
+                                <p class="text-slate-400 text-xs truncate pr-4">${b.email}</p>
+                            </div>
+                            <span class="shrink-0 px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">${b.plan || 'Free Trial'}</span>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-4 border border-white/5">
+                            <div>
+                                <p class="text-slate-500 text-[10px] font-bold uppercase">Credits</p>
+                                <p class="text-lg font-bold text-white">${b.credits || 0}</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500 text-[10px] font-bold uppercase">Joined</p>
+                                <p class="text-sm font-bold text-white mt-1">${createdDate}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button onclick="openModal('${b.id}', '${b.name.replace(/'/g, "\\'")}', '${b.plan}', ${b.credits})" class="flex-1 bg-white/5 hover:bg-white/10 text-white text-sm font-bold py-3 rounded-xl transition-all border border-white/5">Upgrade</button>
+                            <a href="https://wa.me/${b.ownerPhone}" target="_blank" class="px-5 bg-green-500/10 text-green-500 flex items-center justify-center rounded-xl hover:bg-green-500/20 transition-all text-lg">📱</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterBusinesses() {
+            const query = document.getElementById('bizSearch').value.toLowerCase();
+            const filtered = allBusinesses.filter(b => 
+                (b.name && b.name.toLowerCase().includes(query)) || 
+                (b.email && b.email.toLowerCase().includes(query))
+            );
+            renderBusinesses(filtered);
+        }
+
+        function openModal(id, name, plan, credits) {
+            document.getElementById('modalBizId').value = id;
+            document.getElementById('modalBizName').innerText = name;
+            document.getElementById('modalPlan').value = plan || 'Free Trial';
+            document.getElementById('modalCredits').value = credits || 0;
+            document.getElementById('upgradeModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('upgradeModal').style.display = 'none';
+        }
+
+        async function saveChanges() {
+            const id = document.getElementById('modalBizId').value;
+            const plan = document.getElementById('modalPlan').value;
+            const credits = document.getElementById('modalCredits').value;
+
+            try {
+                const res = await fetch(`/api/admin/business/${id}/upgrade`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': authToken
+                    },
+                    body: JSON.stringify({ plan, credits: parseInt(credits) })
+                });
+
+                if (res.ok) {
+                    closeModal();
+                    fetchBusinesses();
+                    alert('Upgraded! ✨');
+                } else {
+                    alert('Update failed');
+                }
+            } catch (err) {
+                alert('Connection error');
+            }
+        }
+    </script>
+</body>
+</html>

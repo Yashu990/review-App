@@ -9,6 +9,7 @@ import {
   View,
   Linking,
   Alert,
+  Image,
 } from 'react-native';
 
 const COLORS = {
@@ -26,6 +27,7 @@ const COLORS = {
 interface CustomerReviewScreenProps {
   businessName: string;
   googleReviewLink: string;
+  privacyTier: string;
   onSubmitPrivateReview: (data: { name: string; number: string; comment: string; rating: number }) => void;
   onGoBack?: () => void;
 }
@@ -33,6 +35,7 @@ interface CustomerReviewScreenProps {
 export function CustomerReviewScreen({ 
   businessName, 
   googleReviewLink, 
+  privacyTier,
   onSubmitPrivateReview,
   onGoBack 
 }: CustomerReviewScreenProps) {
@@ -40,6 +43,9 @@ export function CustomerReviewScreen({
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
   const [comment, setComment] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const isGoodReview = privacyTier === '4-star' ? rating >= 4 : rating >= 5;
 
   const handleRating = (r: number) => {
     setRating(r);
@@ -51,59 +57,72 @@ export function CustomerReviewScreen({
       return;
     }
 
-    if (rating >= 4) {
-      // Good review -> Redirect to Google
-      Alert.alert(
-        'Thank you!',
-        'We are glad you had a great experience. Redirecting you to our Google Review page to share your feedback.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (googleReviewLink) {
-                Linking.openURL(googleReviewLink).catch((err) => 
-                  Alert.alert('Error', 'Could not open the review link')
-                );
-              } else {
-                Alert.alert('Error', 'Google review link not found for this business.');
-              }
-            }
-          }
-        ]
-      );
+    if (isGoodReview) {
+      setShowSuccess(true);
     } else {
-      // Bad review -> Capture details
       if (!name || !number || !comment) {
         Alert.alert('Incomplete', 'Please fill in all fields so we can improve our service.');
         return;
       }
       
       onSubmitPrivateReview({ name, number, comment, rating });
-      Alert.alert(
-        'Feedback Received',
-        'Thank you for your feedback. We are sorry you had a sub-optimal experience. Our manager will contact you shortly to resolve this issue.',
-        [{ text: 'Dismiss', onPress: onGoBack }]
-      );
+      setShowSuccess(true);
     }
   };
+
+  if (showSuccess) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.successWrapper}>
+          <View style={styles.successCard}>
+             <Text style={styles.bigStar}>⭐</Text>
+             <Text style={styles.thanksText}>Thanks for your Feedback</Text>
+          </View>
+
+          <View style={styles.promoSection}>
+             <View style={styles.appBranding}>
+                <Text style={styles.appLogoText}>Review <Text style={{color: '#E91E63'}}>Boost</Text></Text>
+                <Text style={styles.promoSub}>Get more reviews, grow your reputation! Promotes your business now!</Text>
+             </View>
+             
+             <View style={styles.storeButtons}>
+                <TouchableOpacity onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.reviewboost')}>
+                   <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Play_Store_badge_EN.svg/512px-Google_Play_Store_badge_EN.svg.png' }} style={styles.storeIcon} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => Linking.openURL('https://apps.apple.com/app/review-boost')}>
+                   <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg/1200px-Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg.png' }} style={styles.storeIcon} />
+                </TouchableOpacity>
+             </View>
+          </View>
+
+          <TouchableOpacity style={styles.doneBtn} onPress={() => {
+            if (isGoodReview && googleReviewLink) {
+               Linking.openURL(googleReviewLink);
+            }
+            onGoBack?.();
+          }}>
+             <Text style={styles.doneBtnText}>{isGoodReview ? 'Go to Google Maps' : 'Finish'}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
           {onGoBack && (
             <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
               <Text style={styles.backArrow}>← Back</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.title}>Send Feedback</Text>
-          <Text style={styles.subtitle}>{businessName}</Text>
+          <Text style={styles.title}>Give feedback</Text>
+          <Text style={styles.subtitle}>What are your thoughts on the experience with <Text style={styles.boldBiz}>{businessName?.toUpperCase()}</Text>?</Text>
         </View>
 
         {/* Star Rating Section */}
         <View style={styles.starsSection}>
-          <Text style={styles.sectionLabel}>How was your experience?</Text>
           <View style={styles.starsContainer}>
             {[1, 2, 3, 4, 5].map((s) => (
               <TouchableOpacity
@@ -120,55 +139,65 @@ export function CustomerReviewScreen({
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={styles.ratingHint}>
-            {rating === 0 ? 'Select a rating' : 
-             rating <= 3 ? 'We are sorry! Let us fix it.' : 'We are glad you liked it!'}
-          </Text>
         </View>
 
-        {/* Input Form (Always visible or conditional?) */}
-        {/* Requirement: "5 star will show 3 filed number name comment" */}
+        {/* Input Form */}
         <View style={styles.formSection}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Your Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
+          {rating > 0 && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Your feedback</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Tell us about your experience..."
+                value={comment}
+                onChangeText={setComment}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+          )}
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your number"
-              value={number}
-              onChangeText={setNumber}
-              keyboardType="phone-pad"
-            />
-          </View>
+          {/* If Negative -> Reveal Name/Number fields and the Blue Box */}
+          {rating > 0 && !isGoodReview && (
+            <>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Your Name:</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your name"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Comment</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Tell us what happened..."
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Your Number:</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your phone number"
+                  value={number}
+                  onChangeText={setNumber}
+                  keyboardType="phone-pad"
+                />
+              </View>
 
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.submitButtonText}>Submit Feedback</Text>
-          </TouchableOpacity>
+              <View style={styles.bluePromoBox}>
+                <Text style={styles.promoText}>
+                  Give us a chance to improve our services also get exclusive tips, offer and campaigns. Drop your phone no. If you are interested!
+                </Text>
+              </View>
+            </>
+          )}
+
+          {rating > 0 && (
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.submitButtonText}>{isGoodReview ? 'Open Google' : 'Submit'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -178,7 +207,7 @@ export function CustomerReviewScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F2F5FB',
   },
   scrollContent: {
     padding: 24,
@@ -201,24 +230,24 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    color: COLORS.darkGray,
+    color: '#1A1A5E',
   },
   subtitle: {
-    fontSize: 16,
-    color: COLORS.mediumGray,
-    marginTop: 4,
+    fontSize: 15,
+    color: '#444',
+    marginTop: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  boldBiz: {
+    fontWeight: '800',
+    color: '#E91E63', // Pinkish like in the image
   },
   starsSection: {
     alignItems: 'center',
     marginBottom: 32,
-  },
-  sectionLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    marginBottom: 16,
   },
   starsContainer: {
     flexDirection: 'row',
@@ -226,12 +255,6 @@ const styles = StyleSheet.create({
   },
   starIcon: {
     fontSize: 48,
-  },
-  ratingHint: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.primary,
   },
   formSection: {
     gap: 20,
@@ -241,32 +264,65 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.darkGray,
+    fontWeight: '700',
+    color: '#1A1A5E',
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.lightBorder,
-    borderRadius: 12,
+    borderColor: '#BDC3C7',
+    borderRadius: 8,
     padding: 14,
     fontSize: 16,
     color: COLORS.darkGray,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: COLORS.white,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
+  bluePromoBox: {
+    backgroundColor: '#4A90E2',
+    padding: 20,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  promoText: {
+    color: '#FFEB3B', // Yellow text on blue like the image hint
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   submitButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
+    backgroundColor: '#FF5C8D', // Pink submit button like in the image
+    borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   submitButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
   },
+  
+  // Success Screen Styles
+  successWrapper: { flex: 1, padding: 30, justifyContent: 'center', backgroundColor: '#fff' },
+  successCard: { 
+    backgroundColor: '#fff', padding: 40, borderRadius: 20, alignItems: 'center', 
+    elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 
+  },
+  bigStar: { fontSize: 80, marginBottom: 20 },
+  thanksText: { fontSize: 24, fontWeight: '800', textAlign: 'center', color: '#1A1A5E' },
+  
+  promoSection: { marginTop: 40, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 30 },
+  appBranding: { alignItems: 'center', marginBottom: 20 },
+  appLogoText: { fontSize: 28, fontWeight: '900', color: '#1A1A5E' },
+  promoSub: { fontSize: 13, color: '#666', textAlign: 'center', marginTop: 10, lineHeight: 18 },
+  
+  storeButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  storeIcon: { width: 140, height: 42, resizeMode: 'contain' },
+  
+  doneBtn: { backgroundColor: '#1A1A5E', padding: 18, borderRadius: 12, marginTop: 40, alignItems: 'center' },
+  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

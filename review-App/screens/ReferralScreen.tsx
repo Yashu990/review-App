@@ -36,8 +36,8 @@ export function ReferralScreen({ business, onScreenChange }: ReferralScreenProps
   const points = business?.points || 0;
   const referrals = business?.referralCount || 0;
 
-  const appLink = "https://play.google.com/store/apps/details?id=com.reviewapp"; // Change to real link
-  const shareMessage = `Hey! I'm using Review Boost to grow my business reviews. Use my code *${referralCode}* to get 100 bonus points! \n\nDownload now: ${appLink}`;
+  const appLink = "https://www.helonix.com/review-boost"; 
+  const shareMessage = `Hey! 🚀 I'm using *Review Boost* to grow my business reviews. Use my special code *${referralCode}* to get 100 bonus points (worth ₹100)! \n\nDownload and Register here:\n${appLink}`;
 
   const copyToClipboard = () => {
     // We will use standard Alert for now to avoid crash
@@ -47,10 +47,10 @@ export function ReferralScreen({ business, onScreenChange }: ReferralScreenProps
 
   const handleShare = async (platform?: string) => {
     try {
+      // For WhatsApp/Social, putting the Link directly IN the message is more reliable for hyperlinking
       const options = {
         title: 'Refer Review Boost',
         message: shareMessage,
-        url: appLink,
       };
 
       if (platform === 'whatsapp') {
@@ -149,8 +149,8 @@ export function ReferralScreen({ business, onScreenChange }: ReferralScreenProps
            <View style={styles.stepRow}>
               <View style={styles.stepCircle}><Text style={styles.stepNum}>3</Text></View>
               <View style={styles.stepContent}>
-                 <Text style={styles.stepHead}>Get Rewards</Text>
-                 <Text style={styles.stepSub}>Both of you get 100 points instantly which can be used to unlock Premium features!</Text>
+                 <Text style={styles.stepHead}>Get Rewards (₹100)</Text>
+                 <Text style={styles.stepSub}>Both receive 100 points (₹100). Use them for 5 extra free days or subtract from your subscription cost! 🎁</Text>
               </View>
            </View>
         </View>

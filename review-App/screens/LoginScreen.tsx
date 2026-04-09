@@ -67,6 +67,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isManualEntry, setIsManualEntry] = useState(false);
   const [ownerPhone, setOwnerPhone] = useState('');
+  const searchTimeout = React.useRef<any>(null); // For debouncing
 
   useEffect(() => {
     const onBackPress = () => {
@@ -114,9 +115,9 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken;
+      const idToken = (userInfo as any).data?.idToken || (userInfo as any).idToken;
 
-      if (!idToken) throw new Error('No ID Token found');
+      if (!idToken) throw new Error('No ID Token found. Please check Google Console configuration.');
 
       const response = await fetch(`${API_BASE}/google-login`, {
         method: 'POST',
@@ -128,8 +129,8 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
       if (data.newUser) {
         setRegEmail(data.email);
         setView('register');
-        setRegStep(0); // Start from business location
-        Alert.alert('Google Verified', 'Just a few more details to set up your business! 🚀');
+        setRegStep(1); // START DIRECTLY WITH SEARCH
+        Alert.alert('Google Verified', 'Now find your business on the map to continue! 🚀');
       } else if (data.business) {
         onRegister(data.business); // Effectively logs them in
       }
@@ -166,7 +167,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
                <Text style={styles.googleBtnText}>Sign in with Google</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.emailBtn} onPress={() => setView('login')}><Text style={styles.emailBtnText}>Sign in with Email</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.newBizBtn} onPress={() => setView('register')}><Text style={styles.newBizText}>New business? Register Now</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.newBizBtn} onPress={() => { setView('register'); setRegStep(1); }}><Text style={styles.newBizText}>New business? Register Now</Text></TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -247,27 +248,41 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
 
 
 
-  const handleSearch = async (text: string) => {
+  const handleSearch = (text: string) => {
     setSearchQuery(text);
+    
+    // Clear previous timeout
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
     if (text.length > 2) {
-      try {
-        setIsSearching(true);
-        console.log(`[Search] Querying: ${text}...`);
-        const res = await fetch(`${API_BASE}/business/search-places`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: text }),
-        });
-        const data = await res.json();
-        console.log(`[Search] Response state: ${res.status}. Data:`, data);
-        if (Array.isArray(data)) {
-          setSearchResults(data);
+      setIsSearching(true);
+      
+      // Start a 600ms timer
+      searchTimeout.current = setTimeout(async () => {
+        try {
+          console.log(`[Search] Querying: ${text}...`);
+          const res = await fetch(`${API_BASE}/business/search-places`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: text }),
+          });
+          const data = await res.json();
+          
+          if (res.ok && Array.isArray(data)) {
+            setSearchResults(data);
+          } else {
+            setSearchResults([]);
+            console.error('[Search] Error Response:', data);
+          }
+        } catch (e: any) {
+          console.error('[Search] Networking Error:', e);
+          setSearchResults([]);
+          // IMPORTANT: This Alert tells you WHY the phone couldn't talk to the server
+          Alert.alert('Network Error', `Could not connect to server. \n\nDetails: ${e.message}. \n\nPlease try using your Mobile Data (Jio/Airtel) if your WiFi blocks port 7500.`);
+        } finally {
+          setIsSearching(false);
         }
-      } catch (e) {
-        console.error('[Search] Networking Error:', e);
-      } finally {
-        setIsSearching(false);
-      }
+      }, 600);
     } else {
       setSearchResults([]);
       setIsSearching(false);

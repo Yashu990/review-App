@@ -59,6 +59,10 @@ app.get('/rate-us', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
@@ -179,6 +183,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 app.post('/api/google-login', async (req, res) => {
   try {
     const { idToken } = req.body;
+    console.log(`[Google Auth] Attempting login with token: ${idToken ? idToken.substring(0, 10) + '...' : 'MISSING'}`);
     const ticket = await client.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -413,6 +418,62 @@ app.post('/api/business/search-places', async (req, res) => {
   } catch (e) {
       console.error('GOOGLE SEARCH EXCEPTION:', e.name, e.message);
       res.status(500).json({ error: 'Search failed. Check server logs for details.' });
+  }
+});
+
+// ── Admin Routes ──────────────────────────────────────────────────────────
+// NOTE: For full production, use JWT. For this version, we use an Admin Session Key.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@helonix.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'helonix@2024';
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'helonix_admin_2024';
+
+// Admin Login
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body;
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    res.json({ success: true, adminToken: ADMIN_SECRET_KEY });
+  } else {
+    res.status(401).json({ error: 'Invalid admin credentials' });
+  }
+});
+
+const isAdmin = (req, res, next) => {
+  const secret = req.headers['x-admin-secret'];
+  if (secret === ADMIN_SECRET_KEY) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Unauthorized: Admin access required' });
+  }
+};
+
+// List all businesses for Admin
+app.get('/api/admin/businesses', isAdmin, async (req, res) => {
+  try {
+    const businesses = await Business.findAll({
+      order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['password'] } // Don't send passwords
+    });
+    res.json(businesses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Upgrade/Edit Business
+app.patch('/api/admin/business/:id/upgrade', isAdmin, async (req, res) => {
+  try {
+    const { plan, credits, points } = req.body;
+    const biz = await Business.findByPk(req.params.id);
+    if (!biz) return res.status(404).json({ error: 'Business not found' });
+
+    if (plan !== undefined) biz.plan = plan;
+    if (credits !== undefined) biz.credits = credits;
+    if (points !== undefined) biz.points = points;
+    
+    await biz.save();
+    res.json({ message: 'User upgraded successfully', business: biz });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -15,7 +15,7 @@ import ViewShot from 'react-native-view-shot';
 import Share from 'react-native-share'; 
 import QRCode from 'react-native-qrcode-svg';
 import RNFS from 'react-native-fs';
-import { Business } from '../App';
+import { Business, isTrialExpired } from '../App';
 
 const COLORS = {
   primary: '#0066FF',
@@ -43,6 +43,11 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
   };
 
   const handleShare = async (business: Business) => {
+    const trial = isTrialExpired(business);
+    if (trial.expired) {
+      Alert.alert('Trial Expired ⚠️', 'Your 7-day free trial has ended. Please upgrade your plan to continue sharing and using this QR code.');
+      return;
+    }
     const link = generateRealLink(business);
     try {
       await Share.open({
@@ -57,6 +62,12 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
   };
 
   const handleDownload = async (bizId: string) => {
+    const biz = businesses.find(b => b.id === bizId);
+    const trial = isTrialExpired(biz);
+    if (trial.expired) {
+      Alert.alert('Trial Expired ⚠️', 'Your 7-day free trial has ended. Please upgrade your plan to download this QR code.');
+      return;
+    }
     try {
       // 1. Android Permission Check
       if (Platform.OS === 'android') {
@@ -174,16 +185,24 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
                       </View>
 
                       <View style={styles.qrContainer}>
-                        <QRCode
-                          value={qrLink}
-                          size={200}
-                          color="black"
-                          backgroundColor={COLORS.white}
-                          logo={biz.logo ? { uri: biz.logo } : undefined}
-                          logoSize={50}
-                          logoBorderRadius={12}
-                          logoBackgroundColor={COLORS.white}
-                        />
+                        <View style={{ position: 'relative' }}>
+                          <QRCode
+                            value={qrLink}
+                            size={200}
+                            color="black"
+                            backgroundColor={COLORS.white}
+                            logo={biz.logo ? { uri: biz.logo } : undefined}
+                            logoSize={50}
+                            logoBorderRadius={12}
+                            logoBackgroundColor={COLORS.white}
+                          />
+                          {isTrialExpired(biz).expired && (
+                            <View style={styles.qrLockedOverlay}>
+                              <Text style={styles.lockedIcon}>🔒</Text>
+                              <Text style={styles.lockedText}>Trial Expired</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={[styles.qrCaption, {marginTop: 15, fontWeight: '700'}]}>POWERED BY REVIEW BOOST 🚀</Text>
                       </View>
                     </View>
@@ -294,4 +313,13 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, alignItems: 'center' },
   navIcon: { fontSize: 20 },
   navLabel: { fontSize: 10, color: COLORS.mediumGray, marginTop: 4, fontWeight: '600' },
+  qrLockedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  lockedIcon: { fontSize: 40, marginBottom: 8 },
+  lockedText: { fontSize: 16, fontWeight: '800', color: '#FF4D11', textAlign: 'center' },
 });

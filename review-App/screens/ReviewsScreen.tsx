@@ -10,7 +10,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { PrivateReview, Business } from '../App';
+import { PrivateReview, Business, isTrialExpired } from '../App';
 
 const COLORS = {
   primary: '#0066FF',
@@ -39,6 +39,8 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
     if (onRefresh) await onRefresh();
     setRefreshing(false);
   };
+
+  const trial = isTrialExpired(businesses[0]);
 
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -86,15 +88,17 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
         {(businesses[0]?.plan === 'Free Trial' || !businesses[0]?.plan) && (
           <View style={styles.limitCard}>
             <View style={styles.limitHeader}>
-              <Text style={styles.limitLabel}>Free Trial Usage</Text>
-              <Text style={styles.limitCount}>{reviews.length} / 5 Reviews</Text>
+              <Text style={styles.limitLabel}>{trial.expired ? 'Trial Expired' : 'Free Trial Usage'}</Text>
+              <Text style={styles.limitCount}>{trial.expired ? '🔒 Locked' : `${reviews.length} / 5 Reviews`}</Text>
             </View>
             <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${Math.min((reviews.length / 5) * 100, 100)}%` }]} />
+              <View style={[styles.progressBarFill, { width: trial.expired ? '100%' : `${Math.min((reviews.length / 5) * 100, 100)}%`, backgroundColor: trial.expired ? COLORS.error : COLORS.primary }]} />
             </View>
-            {reviews.length >= 5 && (
+            {(reviews.length >= 5 || trial.expired) && (
               <TouchableOpacity style={styles.upgradeNotice} onPress={() => onScreenChange?.('settings')}>
-                <Text style={styles.upgradeNoticeText}>⚠️ Limit reached! Upgrade to capture more. 🚀</Text>
+                <Text style={styles.upgradeNoticeText}>
+                   {trial.expired ? '⚠️ Trial ended! Upgrade to reactivate QR.' : '⚠️ Limit reached! Upgrade to capture more. 🚀'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>

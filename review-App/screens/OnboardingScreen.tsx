@@ -49,26 +49,27 @@ export function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 
   if (showLanguage) {
     return (
-      <SafeAreaView style={styles.containerWhite}>
+      <SafeAreaView style={styles.containerBlack}>
+        <StatusBar barStyle="light-content" />
         <View style={styles.centerContent}>
           <View style={styles.globeContainer}>
              <Text style={{fontSize: 80}}>🌍</Text>
              <View style={styles.pin}><Text style={{fontSize: 20}}>📍</Text></View>
           </View>
-          <Text style={styles.title}>Select your preferred{'\n'}language</Text>
+          <Text style={styles.titleWhite}>Select your preferred{'\n'}language</Text>
           
           {['English', 'Hindi'].map((lang) => (
             <TouchableOpacity 
               key={lang}
-              style={selectedLang === lang ? styles.langBtnActive : styles.langBtn} 
+              style={selectedLang === lang ? styles.langBtnActiveWhite : styles.langBtnBlack} 
               onPress={() => setSelectedLang(lang)}
             >
-              <Text style={selectedLang === lang ? styles.langBtnTextActive : styles.langBtnText}>{lang}</Text>
+              <Text style={selectedLang === lang ? styles.langBtnTextBlack : styles.langBtnTextWhite}>{lang}</Text>
             </TouchableOpacity>
           ))}
           
-          <TouchableOpacity style={[styles.startBtn, {position: 'relative', marginTop: 30, width: '100%'}]} onPress={() => setShowLanguage(false)}>
-            <Text style={styles.startBtnText}>Continue →</Text>
+          <TouchableOpacity style={[styles.startBtnWhite, {position: 'relative', marginTop: 30, width: '100%'}]} onPress={() => setShowLanguage(false)}>
+            <Text style={styles.startBtnTextBlack}>Continue →</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -76,8 +77,8 @@ export function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
   }
 
   return (
-    <View style={styles.containerWhite}>
-      <StatusBar barStyle="dark-content" />
+    <View style={styles.containerBlack}>
+      <StatusBar barStyle="light-content" />
       <ScrollView 
         horizontal 
         pagingEnabled 
@@ -86,65 +87,65 @@ export function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
         {/* Slide 1: Curious */}
         <View style={styles.slide}>
            <Text style={styles.heroEmoji}>🤔</Text>
-           <Text style={styles.slideTitle}>{t.step1Head}</Text>
-           <Text style={styles.slideSub}>{t.step1Body}</Text>
+           <Text style={styles.slideTitleWhite}>{t.step1Head}</Text>
+           <Text style={styles.slideSubWhite}>{t.step1Body}</Text>
         </View>
 
         {/* Slide 2: Private Feedback */}
         <View style={styles.slide}>
            <View style={styles.iconCircle}><Text style={{fontSize: 50}}>🔒</Text></View>
-           <Text style={styles.slideTitle}>{t.step2Head}</Text>
-           <Text style={styles.slideSub}>{t.step2Body}</Text>
+           <Text style={styles.slideTitleWhite}>{t.step2Head}</Text>
+           <Text style={styles.slideSubWhite}>{t.step2Body}</Text>
         </View>
 
         {/* Slide 3: Google Boost */}
         <View style={styles.slide}>
-           <View style={[styles.iconCircle, {backgroundColor: '#E8F4FD'}]}><Text style={{fontSize: 50}}>🚀</Text></View>
-           <Text style={styles.slideTitle}>{t.step3Head}</Text>
-           <Text style={styles.slideSub}>{t.step3Body}</Text>
+           <View style={[styles.iconCircle, {backgroundColor: '#333'}]}><Text style={{fontSize: 50}}>🚀</Text></View>
+           <Text style={styles.slideTitleWhite}>{t.step3Head}</Text>
+           <Text style={styles.slideSubWhite}>{t.step3Body}</Text>
         </View>
 
         {/* Slide 4: Dashboard */}
         <View style={styles.slide}>
-           <View style={[styles.iconCircle, {backgroundColor: '#F2F5FB'}]}><Text style={{fontSize: 50}}>📊</Text></View>
-           <Text style={styles.slideTitle}>{t.step4Head}</Text>
-           <Text style={styles.slideSub}>{t.step4Body}</Text>
+           <View style={[styles.iconCircle, {backgroundColor: '#444'}]}><Text style={{fontSize: 50}}>📊</Text></View>
+           <Text style={styles.slideTitleWhite}>{t.step4Head}</Text>
+           <Text style={styles.slideSubWhite}>{t.step4Body}</Text>
            
-           <TouchableOpacity style={[styles.startBtn, {marginTop: 40, position: 'relative', width: '100%'}]} onPress={onFinish}>
-              <Text style={styles.startBtnText}>{t.startBtn} ✨</Text>
+           <TouchableOpacity style={[styles.startBtnWhite, {marginTop: 40, position: 'relative', width: '100%'}]} onPress={onFinish}>
+              <Text style={styles.startBtnTextBlack}>{t.startBtn} ✨</Text>
            </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Swipe Hint */}
       <View style={styles.footerHint}>
-        <Text style={styles.hintText}>Swipe to learn more ↔️</Text>
+        <Text style={styles.hintTextWhite}>Swipe to learn more ↔️</Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  containerWhite: { flex: 1, backgroundColor: '#fff' },
+  containerBlack: { flex: 1, backgroundColor: '#000' },
   centerContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   globeContainer: { width: 140, height: 140, marginBottom: 40, alignItems: 'center', justifyContent: 'center' },
   pin: { position: 'absolute', top: 30, right: 30 },
-  title: { fontSize: 32, fontWeight: '800', textAlign: 'center', marginBottom: 40, color: '#000' },
-  langBtn: { width: '100%', paddingVertical: 18, borderRadius: 40, borderWidth: 1, borderColor: '#eee', marginBottom: 15, alignItems: 'center' },
-  langBtnActive: { width: '100%', paddingVertical: 18, borderRadius: 40, borderWidth: 2, borderColor: '#000', marginBottom: 15, alignItems: 'center' },
-  langBtnText: { fontSize: 18, fontWeight: '500', color: '#ccc' },
-  langBtnTextActive: { fontSize: 18, fontWeight: '600', color: '#000' },
+  titleWhite: { fontSize: 32, fontWeight: '800', textAlign: 'center', marginBottom: 40, color: '#fff' },
+  langBtnBlack: { width: '100%', paddingVertical: 18, borderRadius: 40, borderWidth: 1, borderColor: '#333', marginBottom: 15, alignItems: 'center' },
+  langBtnActiveWhite: { width: '100%', paddingVertical: 18, borderRadius: 40, borderWidth: 2, borderColor: '#fff', marginBottom: 15, backgroundColor: '#fff', alignItems: 'center' },
+  langBtnTextWhite: { fontSize: 18, fontWeight: '500', color: '#666' },
+  langBtnTextBlack: { fontSize: 18, fontWeight: '600', color: '#000' },
   
   // Carousel
   slide: { width: width, flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  iconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#FFF5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 30 },
+  iconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center', marginBottom: 30 },
   heroEmoji: { fontSize: 100, marginBottom: 20 },
-  slideTitle: { fontSize: 36, fontWeight: '900', color: '#000', textAlign: 'center' },
-  slideSub: { fontSize: 16, color: '#666', textAlign: 'center', marginTop: 15, lineHeight: 24 },
+  slideTitleWhite: { fontSize: 36, fontWeight: '900', color: '#fff', textAlign: 'center' },
+  slideSubWhite: { fontSize: 16, color: '#ccc', textAlign: 'center', marginTop: 15, lineHeight: 24 },
   
   footerHint: { position: 'absolute', bottom: 30, alignSelf: 'center' },
-  hintText: { fontSize: 12, color: '#aaa', fontWeight: '600', letterSpacing: 1 },
+  hintTextWhite: { fontSize: 12, color: '#666', fontWeight: '600', letterSpacing: 1 },
 
-  startBtn: { backgroundColor: '#000', paddingVertical: 20, paddingHorizontal: 40, borderRadius: 40, alignItems: 'center' },
-  startBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  startBtnWhite: { backgroundColor: '#fff', paddingVertical: 20, paddingHorizontal: 40, borderRadius: 40, alignItems: 'center' },
+  startBtnTextBlack: { color: '#000', fontSize: 18, fontWeight: '700' },
 });
