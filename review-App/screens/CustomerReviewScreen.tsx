@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 const COLORS = {
   primary: '#0066FF',
   white: '#FFFFFF',
@@ -32,12 +31,12 @@ interface CustomerReviewScreenProps {
   onGoBack?: () => void;
 }
 
-export function CustomerReviewScreen({ 
-  businessName, 
-  googleReviewLink, 
+export function CustomerReviewScreen({
+  businessName,
+  googleReviewLink,
   privacyTier,
   onSubmitPrivateReview,
-  onGoBack 
+  onGoBack
 }: CustomerReviewScreenProps) {
   const [rating, setRating] = useState(0);
   const [name, setName] = useState('');
@@ -45,10 +44,25 @@ export function CustomerReviewScreen({
   const [comment, setComment] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const isGoodReview = privacyTier === '4-star' ? rating >= 4 : rating >= 5;
+  const isGoodReview = (privacyTier === '4-star' || privacyTier === '4-5-star') ? rating >= 4 : rating >= 5;
 
   const handleRating = (r: number) => {
     setRating(r);
+    
+    // FORCED ALERT - To prove the app is updated
+    Alert.alert("Code Update Info", `You tapped ${r} stars.\nTier: ${privacyTier}\nLink: ${googleReviewLink || 'MISSING'}`);
+
+    console.log("Rating:", r, "Tier:", privacyTier, "Link:", googleReviewLink);
+    
+    const isInclusiveTier = privacyTier === '4-star' || privacyTier === '4-5-star';
+    const instantGood = isInclusiveTier ? r >= 4 : r >= 5;
+
+    if (instantGood && googleReviewLink) {
+       Linking.openURL(googleReviewLink).catch(err => {
+         console.error("Link Error:", err);
+       });
+       setShowSuccess(true);
+    }
   };
 
   const handleSubmit = () => {
@@ -58,13 +72,18 @@ export function CustomerReviewScreen({
     }
 
     if (isGoodReview) {
+      if (googleReviewLink) {
+        Linking.openURL(googleReviewLink).catch(err => {
+          console.error("Failed to open URL:", err);
+        });
+      }
       setShowSuccess(true);
     } else {
       if (!name || !number || !comment) {
         Alert.alert('Incomplete', 'Please fill in all fields so we can improve our service.');
         return;
       }
-      
+
       onSubmitPrivateReview({ name, number, comment, rating });
       setShowSuccess(true);
     }
@@ -75,33 +94,28 @@ export function CustomerReviewScreen({
       <SafeAreaView style={styles.container}>
         <View style={styles.successWrapper}>
           <View style={styles.successCard}>
-             <Text style={styles.bigStar}>⭐</Text>
-             <Text style={styles.thanksText}>Thanks for your Feedback</Text>
+            <Text style={styles.bigStar}>⭐</Text>
+            <Text style={styles.thanksText}>Thanks for your Feedback</Text>
           </View>
 
           <View style={styles.promoSection}>
-             <View style={styles.appBranding}>
-                <Text style={styles.appLogoText}>Review <Text style={{color: '#E91E63'}}>Boost</Text></Text>
-                <Text style={styles.promoSub}>Get more reviews, grow your reputation! Promotes your business now!</Text>
-             </View>
-             
-             <View style={styles.storeButtons}>
-                <TouchableOpacity onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.reviewboost')}>
-                   <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Play_Store_badge_EN.svg/512px-Google_Play_Store_badge_EN.svg.png' }} style={styles.storeIcon} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => Linking.openURL('https://apps.apple.com/app/review-boost')}>
-                   <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg/1200px-Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg.png' }} style={styles.storeIcon} />
-                </TouchableOpacity>
-             </View>
+            <View style={styles.appBranding}>
+              <Text style={styles.appLogoText}>Review <Text style={{ color: '#E91E63' }}>Boost</Text></Text>
+              <Text style={styles.promoSub}>Get more reviews, grow your reputation! Promotes your business now!</Text>
+            </View>
+
+            <View style={styles.storeButtons}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.reviewboost')}>
+                <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Play_Store_badge_EN.svg/512px-Google_Play_Store_badge_EN.svg.png' }} style={styles.storeIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => Linking.openURL('https://apps.apple.com/app/review-boost')}>
+                <Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg/1200px-Download_on_the_App_Store_Badge_ES_RGB_blk_100217.svg.png' }} style={styles.storeIcon} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.doneBtn} onPress={() => {
-            if (isGoodReview && googleReviewLink) {
-               Linking.openURL(googleReviewLink);
-            }
-            onGoBack?.();
-          }}>
-             <Text style={styles.doneBtnText}>{isGoodReview ? 'Go to Google Maps' : 'Finish'}</Text>
+          <TouchableOpacity style={styles.doneBtn} onPress={() => onGoBack?.()}>
+            <Text style={styles.doneBtnText}>FINISHED</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -131,7 +145,7 @@ export function CustomerReviewScreen({
                 activeOpacity={0.7}
               >
                 <Text style={[
-                  styles.starIcon, 
+                  styles.starIcon,
                   { color: s <= rating ? COLORS.starActive : COLORS.starEmpty }
                 ]}>
                   ★
@@ -143,7 +157,7 @@ export function CustomerReviewScreen({
 
         {/* Input Form */}
         <View style={styles.formSection}>
-          {rating > 0 && (
+          {rating > 0 && !isGoodReview && (
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Your feedback</Text>
               <TextInput
@@ -305,24 +319,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.white,
   },
-  
+
   // Success Screen Styles
   successWrapper: { flex: 1, padding: 30, justifyContent: 'center', backgroundColor: '#fff' },
-  successCard: { 
-    backgroundColor: '#fff', padding: 40, borderRadius: 20, alignItems: 'center', 
-    elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 
+  successCard: {
+    backgroundColor: '#fff', padding: 40, borderRadius: 20, alignItems: 'center',
+    elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10
   },
   bigStar: { fontSize: 80, marginBottom: 20 },
   thanksText: { fontSize: 24, fontWeight: '800', textAlign: 'center', color: '#1A1A5E' },
-  
+
   promoSection: { marginTop: 40, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 30 },
   appBranding: { alignItems: 'center', marginBottom: 20 },
   appLogoText: { fontSize: 28, fontWeight: '900', color: '#1A1A5E' },
   promoSub: { fontSize: 13, color: '#666', textAlign: 'center', marginTop: 10, lineHeight: 18 },
-  
+
   storeButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
   storeIcon: { width: 140, height: 42, resizeMode: 'contain' },
-  
+
   doneBtn: { backgroundColor: '#1A1A5E', padding: 18, borderRadius: 12, marginTop: 40, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   PermissionsAndroid,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import Share from 'react-native-share'; 
 import QRCode from 'react-native-qrcode-svg';
@@ -176,8 +176,8 @@ export function QRCodesScreen({ businesses, onSelectBusiness, onScreenChange }: 
           businesses.map((biz) => {
             const qrLink = generateRealLink(biz);
             return (
-                <View style={[styles.card, {backgroundColor: getStyleColor(biz.qrStyle)}]}>
-                  <ViewShot key={biz.id} ref={(ref) => { cardRefs.current[biz.id] = ref; }} options={{ format: "png", quality: 1.0 }}>
+                <View key={biz.id} style={[styles.card, {backgroundColor: getStyleColor(biz.qrStyle)}]}>
+                  <ViewShot ref={(ref) => { cardRefs.current[biz.id] = ref; }} options={{ format: "png", quality: 1.0 }}>
                     <View style={{backgroundColor: getStyleColor(biz.qrStyle), padding: 20}}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.bizName}>{biz.name} {getStyleIcon(biz.qrStyle)}</Text>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -9,6 +8,7 @@ import {
   StatusBar,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -77,8 +77,14 @@ export function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
   }
 
   return (
-    <View style={styles.containerBlack}>
+    <SafeAreaView style={styles.containerBlack}>
       <StatusBar barStyle="light-content" />
+      <TouchableOpacity 
+        style={{padding: 20, position: 'absolute', top: 10, left: 10, zIndex: 10}} 
+        onPress={() => setShowLanguage(true)}
+      >
+        <Text style={{color: '#fff', fontSize: 18}}>← Language</Text>
+      </TouchableOpacity>
       <ScrollView 
         horizontal 
         pagingEnabled 
@@ -121,7 +127,7 @@ export function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
       <View style={styles.footerHint}>
         <Text style={styles.hintTextWhite}>Swipe to learn more ↔️</Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

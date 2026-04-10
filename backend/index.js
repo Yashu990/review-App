@@ -85,6 +85,8 @@ app.get('/api/business/:id', async (req, res) => {
       referralCount: biz.referralCount,
       plan: biz.plan,
       privacyTier: biz.privacyTier,
+      credits: biz.credits,
+      points: biz.points,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

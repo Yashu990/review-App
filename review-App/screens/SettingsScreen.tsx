@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   Image,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { Business, isTrialExpired } from '../App';
 
@@ -275,7 +275,7 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
               <Text style={styles.modalTitle}>Update Profile</Text>
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)}><Text style={styles.closeModalText}>✕</Text></TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} style={{paddingBottom: 50}}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom: 100}}>
                {/* ── Logo Picker In Modal ── */}
                <View style={{alignItems: 'center', marginBottom: 20}}>
                  <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
@@ -294,30 +294,54 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
                <Text style={styles.inputLabel}>Google Link</Text>
                <TextInput style={[styles.input, {height: 60}]} value={googleLink} onChangeText={setGoogleLink} multiline />
 
-               <Text style={styles.inputLabel}>Business Type</Text>
-               <View style={styles.rowChoice}>
-                  {['In Person', 'Remotely', 'Both'].map(t => (
-                    <TouchableOpacity key={t} style={[styles.miniBtn, bizType === t && styles.miniBtnActive]} onPress={() => setBizType(t)}><Text style={[styles.miniBtnText, bizType === t && styles.miniBtnTextActive]}>{t}</Text></TouchableOpacity>
-                  ))}
-               </View>
+                <Text style={styles.inputLabel}>Business Type</Text>
+                <View style={styles.rowChoice}>
+                   {['In Person', 'Remotely', 'Both'].map(t => (
+                     <TouchableOpacity key={t} style={[styles.miniBtn, bizType === t && styles.miniBtnActive]} onPress={() => setBizType(t)}><Text style={[styles.miniBtnText, bizType === t && styles.miniBtnTextActive]}>{t}</Text></TouchableOpacity>
+                   ))}
+                </View>
 
-               <Text style={styles.inputLabel}>Privacy Tier (Minimum to show Google)</Text>
-               <View style={styles.rowChoice}>
-                  {['5-star', '4-star'].map(p => (
-                    <TouchableOpacity key={p} style={[styles.miniBtn, privacyTier === p && styles.miniBtnActive]} onPress={() => setPrivacyTier(p)}><Text style={[styles.miniBtnText, privacyTier === p && styles.miniBtnTextActive]}>{p}</Text></TouchableOpacity>
-                  ))}
-               </View>
+                <Text style={styles.inputLabel}>Privacy Tier (Minimum to show Google Maps)</Text>
+                <View style={{gap: 12, marginTop: 10}}>
+                   {[
+                     {id: '5-star', label: '5-star reviews only', stars: '⭐⭐⭐⭐⭐'},
+                     {id: '4-star', label: '4-star reviews', stars: '⭐⭐⭐⭐'}
+                   ].map(p => {
+                     const isSelected = p.id === '5-star' ? (privacyTier === '5-star' || privacyTier === '4-star') : privacyTier === '4-star';
+                     return (
+                       <TouchableOpacity 
+                          key={p.id} 
+                          style={[styles.miniBtnFull, isSelected && styles.miniBtnActive]} 
+                          onPress={() => {
+                            if (p.id === '5-star') setPrivacyTier('5-star');
+                            else setPrivacyTier(privacyTier === '4-star' ? '5-star' : '4-star');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingHorizontal: 15}}>
+                            <View>
+                              <Text style={[styles.miniBtnText, isSelected && styles.miniBtnTextActive, {textAlign: 'left'}]}>{p.label}</Text>
+                              <Text style={{fontSize: 14}}>{p.stars}</Text>
+                            </View>
+                            <View style={[styles.checkboxSmall, isSelected && styles.checkboxSmallChecked]}>
+                              {isSelected && <Text style={{color: '#fff', fontSize: 10, fontWeight: '900'}}>✓</Text>}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                     );
+                   })}
+                </View>
 
-               <Text style={styles.inputLabel}>QR Code Style</Text>
-               <View style={[styles.rowChoice, {flexWrap: 'wrap'}]}>
-                  {['default', 'hearts', 'scanme', 'beer', 'gift', 'shop'].map(s => (
-                    <TouchableOpacity key={s} style={[styles.miniBtn, qrStyle === s && styles.miniBtnActive, {width: '30%', marginBottom: 10}]} onPress={() => setQrStyle(s)}><Text style={[styles.miniBtnText, qrStyle === s && styles.miniBtnTextActive]}>{s}</Text></TouchableOpacity>
-                  ))}
-               </View>
+                <Text style={styles.inputLabel}>QR Code Style</Text>
+                <View style={[styles.rowChoice, {flexWrap: 'wrap'}]}>
+                   {['default', 'hearts', 'scanme', 'beer', 'gift', 'shop'].map(s => (
+                     <TouchableOpacity key={s} style={[styles.miniBtn, qrStyle === s && styles.miniBtnActive, {width: '30%', marginBottom: 10}]} onPress={() => setQrStyle(s)}><Text style={[styles.miniBtnText, qrStyle === s && styles.miniBtnTextActive]}>{s}</Text></TouchableOpacity>
+                   ))}
+                </View>
 
-               <TouchableOpacity style={styles.saveBtn} onPress={() => handleUpdate({
-                 name, ownerName, ownerPhone, googleReviewLink: googleLink, businessType: bizType, privacyTier, qrStyle, logo: logoBase64
-               })}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.saveBtn} onPress={() => handleUpdate({
+                  name, ownerName, ownerPhone, googleReviewLink: googleLink, businessType: bizType, privacyTier, qrStyle, logo: logoBase64
+                })}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -430,9 +454,12 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#fff', fontWeight: '800' },
   rowChoice: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 16 },
   miniBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', alignItems: 'center' },
+  miniBtnFull: { width: '100%', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#ddd', alignItems: 'center', marginBottom: 5 },
   miniBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  miniBtnText: { fontSize: 12, color: '#666', fontWeight: '600' },
-  miniBtnTextActive: { color: '#fff' },
+  miniBtnText: { color: COLORS.darkGray, fontWeight: '700', fontSize: 13 },
+  miniBtnTextActive: { color: COLORS.white },
+  checkboxSmall: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center' },
+  checkboxSmallChecked: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.lightBorder, paddingVertical: 12, paddingBottom: 24 },
   navItem: { flex: 1, alignItems: 'center' },
   navIcon: { fontSize: 20 },

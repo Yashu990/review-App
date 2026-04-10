@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   Keyboard,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Business } from '../App';
 import { API_BASE } from '../constants';
@@ -23,7 +23,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 // ── Google Sign-In Config placeholder ────────────────────────────────────────
 // Once you get your WEB_CLIENT_ID from Firebase Console -> Project Settings
 // Add it here. This is REQUIRED for both Android/iOS to work.
-GoogleSignin.configure({ webClientId: '939259415099-k42l57g4gdc5ts54a4cdf3fv8eprvk6d.apps.googleusercontent.com' });
+GoogleSignin.configure({ webClientId: '939259415099-5cbviptldnlgqncpe10dd6j9g7j88sv5.apps.googleusercontent.com' });
 
 const { width, height } = Dimensions.get('window');
 
@@ -53,7 +53,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [bizType, setBizType] = useState('Both'); // In Person, Remotely, Both
-  const [privacyTier, setPrivacyTier] = useState('5-star'); // 5-star, 4-5-star
+  const [privacyTier, setPrivacyTier] = useState('5-star'); // 5-star, 4-star
   const [qrStyle, setQrStyle] = useState('default');
 
   // Login State
@@ -129,10 +129,12 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
       if (data.newUser) {
         setRegEmail(data.email);
         setView('register');
-        setRegStep(1); // START DIRECTLY WITH SEARCH
-        Alert.alert('Google Verified', 'Now find your business on the map to continue! 🚀');
+        setRegStep(0); // Show "Help us find location" first
+        Alert.alert('Google Verified', 'Verified! help us find your business on the map. 🚀');
       } else if (data.business) {
         onRegister(data.business); // Effectively logs them in
+      } else if (data.error) {
+        throw new Error(data.error); 
       }
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -167,7 +169,7 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
                <Text style={styles.googleBtnText}>Sign in with Google</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.emailBtn} onPress={() => setView('login')}><Text style={styles.emailBtnText}>Sign in with Email</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.newBizBtn} onPress={() => { setView('register'); setRegStep(1); }}><Text style={styles.newBizText}>New business? Register Now</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.newBizBtn} onPress={() => { setView('register'); setRegStep(0); }}><Text style={styles.newBizText}>New business? Register Now</Text></TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -461,14 +463,36 @@ export function LoginScreen({ onRegister, onLogin }: LoginScreenProps) {
           <Text style={styles.onboardTitle}>All reviews stay private in Review Boost!</Text>
           <Text style={styles.onboardSub}>Choose what to share on {'\n'}<Text style={{color: '#4285F4'}}>G</Text><Text style={{color: '#EA4335'}}>o</Text><Text style={{color: '#FBBC05'}}>o</Text><Text style={{color: '#4285F4'}}>g</Text><Text style={{color: '#34A853'}}>l</Text><Text style={{color: '#EA4335'}}>e</Text></Text>
 
-          <TouchableOpacity style={[styles.settingCard, privacyTier === '5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('5-star')}>
-            <Text style={styles.settingLabel}>5-star reviews only</Text>
-            <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
+          <TouchableOpacity 
+            style={[styles.settingCard, (privacyTier === '5-star' || privacyTier === '4-star') && styles.choiceActive]} 
+            onPress={() => setPrivacyTier('5-star')} 
+            activeOpacity={0.7}
+          >
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+              <View>
+                <Text style={styles.settingLabel}>5-star reviews only</Text>
+                <Text style={{fontSize: 20}}>⭐⭐⭐⭐⭐</Text>
+              </View>
+              <View style={[styles.checkbox, (privacyTier === '5-star' || privacyTier === '4-star') && styles.checkboxChecked]}>
+                {(privacyTier === '5-star' || privacyTier === '4-star') && <Text style={{color: '#fff', fontSize: 12}}>✓</Text>}
+              </View>
+            </View>
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.settingCard, privacyTier === '4-5-star' && styles.choiceActive]} onPress={() => setPrivacyTier('4-5-star')}>
-            <Text style={styles.settingLabel}>4-star reviews</Text>
-            <Text style={{fontSize: 20}}>⭐⭐⭐⭐</Text>
+          <TouchableOpacity 
+            style={[styles.settingCard, privacyTier === '4-star' && styles.choiceActive]} 
+            onPress={() => setPrivacyTier(privacyTier === '4-star' ? '5-star' : '4-star')} 
+            activeOpacity={0.7}
+          >
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+              <View>
+                <Text style={styles.settingLabel}>4-star reviews</Text>
+                <Text style={{fontSize: 20}}>⭐⭐⭐⭐</Text>
+              </View>
+              <View style={[styles.checkbox, privacyTier === '4-star' && styles.checkboxChecked]}>
+                {privacyTier === '4-star' && <Text style={{color: '#fff', fontSize: 12}}>✓</Text>}
+              </View>
+            </View>
           </TouchableOpacity>
 
 
@@ -647,6 +671,8 @@ const styles = StyleSheet.create({
   
   settingCard: { width: '100%', padding: 25, borderRadius: 24, borderWidth: 2, borderColor: '#eee', marginBottom: 20 },
   settingLabel: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: '#000', borderColor: '#000' },
   
   qrGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, marginBottom: 40 },
   qrStyleCard: { width: (width - 70) / 2, height: 160, borderRadius: 20, borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center' },

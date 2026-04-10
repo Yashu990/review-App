@@ -259,7 +259,10 @@
         const form = document.getElementById('review-form');
 
         stars.forEach(s => {
-            s.addEventListener('click', () => {
+            s.addEventListener('click', async () => {
+                // Ensure biz info is loaded if it's still missing
+                if (!googleLink) await fetchBizInfo();
+                
                 selectedStars = parseInt(s.dataset.val);
                 stars.forEach((st, idx) => {
                     st.classList.toggle('selected', idx < selectedStars);
@@ -268,25 +271,26 @@
                 // High-Rating Logic: Determine when to send to Google
                 console.log(`Privacy Tier: ${privacyTier}, Selected Stars: ${selectedStars}`);
                 
-                let isHighRating = false;
-                if (privacyTier === '5-star') {
-                    isHighRating = (selectedStars >= 5);
-                } else if (privacyTier === '4-5-star') {
-                    isHighRating = (selectedStars >= 4);
-                } else if (privacyTier === '3-4-5-star') {
-                    isHighRating = (selectedStars >= 3);
-                }
+                // Standardized logic for both Web and Mobile
+                const isGoodReview = (privacyTier === '4-star' || privacyTier === '4-5-star') 
+                    ? selectedStars >= 4 
+                    : selectedStars >= 5;
 
-                if (isHighRating) {
+                if (isGoodReview) {
                     if (googleLink) {
-                        // Delay 300ms so user sees stars light up
-                        setTimeout(() => {
-                           window.location.href = googleLink;
-                        }, 300);
+                        // SUPER CLEANER: Find the real https link even if there is text around it
+                        const linkMatch = googleLink.match(/https?:\/\/[^\s]+/);
+                        const finalLink = linkMatch ? linkMatch[0] : googleLink;
+                        
+                        // Instant Redirect
+                        window.location.href = finalLink;
                     } else {
-                        form.style.display = 'flex';
+                        // Success screen even without link
+                        document.getElementById('initial-view').classList.add('hidden');
+                        document.getElementById('success-view').classList.remove('hidden');
                     }
                 } else {
+                    // Only show form for low ratings
                     form.style.display = 'flex';
                     form.scrollIntoView({ behavior: 'smooth' });
                 }

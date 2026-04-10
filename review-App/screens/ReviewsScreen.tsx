@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   RefreshControl,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { PrivateReview, Business, isTrialExpired } from '../App';
 
 const COLORS = {

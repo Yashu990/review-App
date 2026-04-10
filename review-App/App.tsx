@@ -124,6 +124,9 @@ function App() {
       if (bizRes.ok) {
         const data = await bizRes.json();
         setBusinesses([{ id: bizId, ...data }]);
+        Alert.alert("Sync Complete", `Found ${data.credits ?? 0} Credits on Server.`);
+      } else {
+        Alert.alert("Sync Error", "Server returned an error. Check your connection.");
       }
       const revRes = await fetch(`${API_BASE}/reviews/business/${bizId}`);
       if (revRes.ok) {
@@ -132,6 +135,7 @@ function App() {
       }
     } catch (e) {
       console.log('Sync error:', e);
+      Alert.alert("Sync Failed", "Could not connect to the server.");
     }
   };
 
@@ -252,6 +256,7 @@ function App() {
           reviews={privateReviews} 
           onScreenChange={setCurrentScreen} 
           logo={businesses[0]?.logo}
+          onRefresh={() => fetchData(selectedBusinessId!)}
         />;
       case 'qrcodes':
         return <QRCodesScreen 
@@ -284,9 +289,15 @@ function App() {
         />;
       case 'customer_review':
         const activeBiz = businesses.find(b => b.id === selectedBusinessId) || businesses[0];
+        
+        // Safety check to prevent crash if businesses list is empty
+        if (!activeBiz) {
+          return <DashboardScreen onScreenChange={setCurrentScreen} reviews={privateReviews} />;
+        }
+
         return <CustomerReviewScreen 
-          businessName={activeBiz.name}
-          googleReviewLink={activeBiz.googleReviewLink}
+          businessName={activeBiz.name || 'Your Business'}
+          googleReviewLink={activeBiz.googleReviewLink || ''}
           privacyTier={activeBiz.privacyTier || '5-star'}
           onGoBack={() => setCurrentScreen('qrcodes')}
           onSubmitPrivateReview={async (data) => {

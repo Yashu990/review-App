@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -8,7 +7,9 @@ import {
   TouchableOpacity,
   View,
   Image,
+  RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { PrivateReview, Business, isTrialExpired } from '../App';
 import { SERVER_URL } from '../constants';
@@ -29,9 +30,17 @@ interface DashboardScreenProps {
   reviews: PrivateReview[];
   onScreenChange?: (screen: string) => void;
   logo?: string;
+  onRefresh?: () => Promise<void>;
 }
 
-export function DashboardScreen({ business, reviews, onScreenChange, logo }: DashboardScreenProps) {
+export function DashboardScreen({ business, reviews, onScreenChange, logo, onRefresh }: DashboardScreenProps) {
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (onRefresh) await onRefresh();
+    setRefreshing(false);
+  };
   
   const generateLink = () => `${SERVER_URL}/rate-us?businessId=${business?.id}`;
   const negativeReviews = reviews.filter(r => r.rating <= 3);
@@ -54,6 +63,9 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+        }
       >
         {/* Header with Profile Icon on Top Right */}
         <View style={styles.header}>
@@ -73,28 +85,7 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
           </TouchableOpacity>
         </View>
         
-        {/* ── Trial Status Banner ── */}
-        {business?.plan === 'Free Trial' && (
-          <View style={[styles.trialBanner, trial.expired && styles.expiredBanner]}>
-             <View style={{flex: 1}}>
-                <Text style={styles.trialTitle}>
-                   {trial.expired ? 'Trial Expired ⚠️' : `Free Trial: ${trial.daysLeft} Days Left`}
-                </Text>
-                <Text style={styles.trialSub}>
-                   {trial.expired 
-                      ? 'Your QR code is currently inactive. Upgrade to reactivate.' 
-                      : 'You have full access to all features for 7 days.'}
-                </Text>
-             </View>
-             <TouchableOpacity 
-                style={styles.trialUpgradeBtn}
-                onPress={() => handleTabChange('settings')}
-             >
-                <Text style={styles.trialUpgradeText}>{trial.expired ? 'Upgrade' : 'Get Full'}</Text>
-             </TouchableOpacity>
-          </View>
-        )}
-
+        {/* Trial Status Banner Removed */}
         {/* ── NEW: Instant QR Code Section ── */}
         {business?.id && (
           <View style={styles.qrQuickSection}>
@@ -128,8 +119,8 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
 
           <View style={[styles.statCard, {backgroundColor: '#E8F5E9', borderColor: '#4CAF50', borderWidth: 1}]}>
             <Text style={[styles.statLabel, {color: '#2E7D32'}]}>Review Credits</Text>
-            <Text style={[styles.statValue, {color: '#2E7D32'}]}>{Math.max(0, (business?.credits ?? 7) - totalReviews)}</Text>
-            <Text style={[styles.statHint, {color: '#4CAF50'}]}>Remaining</Text>
+            <Text style={[styles.statValue, {color: '#2E7D32'}]}>{business?.credits ?? 0}</Text>
+            <Text style={[styles.statHint, {color: '#4CAF50'}]}>Total Balance</Text>
           </View>
         </View>
 
@@ -183,6 +174,11 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
           )}
         </View>
 
+        {/* Diagnostic: Show Business ID at the very bottom */}
+        <View style={{padding: 20, alignItems: 'center', opacity: 0.5, marginBottom: 100}}>
+          <Text style={{fontSize: 10, color: COLORS.mediumGray}}>Device Connected to: {SERVER_URL}</Text>
+          <Text style={{fontSize: 10, color: COLORS.mediumGray}}>Business ID: {business?.id}</Text>
+        </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -204,6 +200,24 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo }: Das
           <Text style={styles.navLabel}>Settings</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Strict Trial Expired Modal ── */}
+      {trial.expired && (
+        <View style={styles.expiredOverlay}>
+          <View style={styles.expiredModal}>
+            <Text style={styles.expiredModalTitle}>Trial Expired ⚠️</Text>
+            <Text style={styles.expiredModalText}>
+              Your 7-day free trial has ended. Please upgrade your plan to reactivate your Review QR Code and continue capturing feedback.
+            </Text>
+            <TouchableOpacity 
+              style={styles.expiredModalButton}
+              onPress={() => handleTabChange('settings')}
+            >
+              <Text style={styles.expiredModalButtonText}>Upgrade Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -283,4 +297,18 @@ const styles = StyleSheet.create({
   trialSub: { fontSize: 12, color: COLORS.mediumGray, marginTop: 2 },
   trialUpgradeBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, marginLeft: 10 },
   trialUpgradeText: { color: COLORS.white, fontWeight: '700', fontSize: 12 },
+  
+  // Expired Modal Styles
+  expiredOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20
+  },
+  expiredModal: {
+    backgroundColor: COLORS.white, padding: 30, borderRadius: 24, alignItems: 'center', width: '100%',
+    shadowColor: '#000', shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.4, shadowRadius: 20, elevation: 15
+  },
+  expiredModalTitle: { fontSize: 26, fontWeight: '900', color: COLORS.error, marginBottom: 12 },
+  expiredModalText: { fontSize: 16, color: COLORS.darkGray, textAlign: 'center', marginBottom: 28, lineHeight: 24, fontWeight: '500' },
+  expiredModalButton: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 14, width: '100%', alignItems: 'center' },
+  expiredModalButtonText: { color: COLORS.white, fontSize: 18, fontWeight: '800' }
 });
