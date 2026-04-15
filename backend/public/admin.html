@@ -7,7 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0F172A; color: #F8FAFC; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .card-hover:hover { transform: translateY(-4px); transition: all 0.3s ease; box-shadow: 0 10px 30px -10px rgba(0, 102, 255, 0.3); }
         .gradient-text { background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -50,7 +55,7 @@
         <!-- Header -->
         <header class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
             <div>
-                <h1 class="text-4xl font-extrabold tracking-tight mb-2">Review Boost <span class="gradient-text">Admin</span></h1>
+                <h1 class="text-4xl font-extrabold tracking-tight mb-2">Review Boost <span class="gradient-text">ADMIN PORTAL ACTIVATED</span></h1>
                 <p class="text-slate-400">Manage businesses, upgrades, and review credits.</p>
             </div>
             <div class="flex items-center gap-4">
@@ -216,12 +221,21 @@
                 return `
                     <div class="glass p-6 rounded-3xl card-hover relative overflow-hidden">
                         ${isExpired ? '<div class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">EXPIRED</div>' : ''}
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex-1">
-                                <h4 class="text-xl font-bold text-white truncate pr-4">${b.name}</h4>
-                                <p class="text-slate-400 text-xs truncate pr-4">${b.email}</p>
+                        
+                        <div class="flex justify-between items-start mb-4 gap-4">
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-xl font-bold text-white truncate">${b.name}</h4>
+                                <p class="text-slate-400 text-xs truncate">${b.email}</p>
                             </div>
-                            <span class="shrink-0 px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">${b.plan || 'Free Trial'}</span>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">${b.plan || 'Free Trial'}</span>
+                                <!-- Delete Icon (Properly aligned) -->
+                                <button onclick="deleteBusiness('${b.id}', '${b.name.replace(/'/g, "\\'")}')" class="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-all group" title="Delete Business">
+                                    <svg class="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="bg-slate-900/50 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-4 border border-white/5">
@@ -235,13 +249,78 @@
                             </div>
                         </div>
 
+                        <!-- Credit Actions Row 1 -->
+                        <div class="flex gap-2 mb-3">
+                            <button onclick="updateCreditsDirectly('${b.id}', ${b.credits}, -1)" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all border border-red-800 text-xs uppercase tracking-wider">Decrease</button>
+                            <button onclick="updateCreditsDirectly('${b.id}', ${b.credits}, 1)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all border border-blue-800 text-xs uppercase tracking-wider">Add</button>
+                        </div>
+
+                        <!-- Main Actions Row 2 -->
                         <div class="flex gap-3">
-                            <button onclick="openModal('${b.id}', '${b.name.replace(/'/g, "\\'")}', '${b.plan}', ${b.credits})" class="flex-1 bg-white/5 hover:bg-white/10 text-white text-sm font-bold py-3 rounded-xl transition-all border border-white/5">Upgrade</button>
-                            <a href="https://wa.me/${b.ownerPhone}" target="_blank" class="px-5 bg-green-500/10 text-green-500 flex items-center justify-center rounded-xl hover:bg-green-500/20 transition-all text-lg">📱</a>
+                            <button onclick="openModal('${b.id}', '${b.name.replace(/'/g, "\\'")}', '${b.plan}', ${b.credits})" class="flex-1 bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-3 rounded-xl transition-all border border-white/5">FULL UPGRADE</button>
+                            <a href="https://wa.me/${b.ownerPhone}" target="_blank" class="w-12 h-12 bg-green-500/20 text-green-500 flex items-center justify-center rounded-xl border border-green-500/20 hover:bg-green-500/30 transition-all text-xl">📱</a>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function deleteBusiness(id, name) {
+            if (!confirm(`Are you SURE you want to delete ${name}? This action CANNOT be undone.`)) return;
+            
+            try {
+                const res = await fetch(`/api/admin/business/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'x-admin-secret': authToken
+                    }
+                });
+
+                if (res.ok) {
+                    await fetchBusinesses();
+                    alert('Business deleted permanently.');
+                } else {
+                    const data = await res.json();
+                    alert('Server Error: ' + (data.error || 'Failed to delete business'));
+                }
+            } catch (err) {
+                console.error('Delete flow error:', err);
+                alert('Connection error: ' + err.message);
+            }
+        }
+
+        async function updateCreditsDirectly(id, current, change) {
+            // Force credits to be integers to prevent string issues (e.g. 7+1 = 71)
+            const baseCredits = parseInt(current) || 0;
+            const amount = parseInt(change) || 0;
+            const newCredits = Math.max(0, baseCredits + amount);
+            
+            try {
+                const res = await fetch(`/api/admin/business/${id}/upgrade`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': authToken
+                    },
+                    body: JSON.stringify({ credits: newCredits })
+                });
+
+                if (res.ok) {
+                    await fetchBusinesses(); // Wait for fresh data
+                    // Show a quick success indicator
+                    const statusText = document.createElement('div');
+                    statusText.innerText = `✅ Credits Updated to ${newCredits}`;
+                    statusText.className = 'fixed bottom-10 right-10 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl z-50 animate-bounce';
+                    document.body.appendChild(statusText);
+                    setTimeout(() => statusText.remove(), 2500);
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to update credits');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
+            }
         }
 
         function filterBusinesses() {

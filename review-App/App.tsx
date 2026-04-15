@@ -124,9 +124,7 @@ function App() {
       if (bizRes.ok) {
         const data = await bizRes.json();
         setBusinesses([{ id: bizId, ...data }]);
-        Alert.alert("Sync Complete", `Found ${data.credits ?? 0} Credits on Server.`);
-      } else {
-        Alert.alert("Sync Error", "Server returned an error. Check your connection.");
+        // Silent sync — no popup
       }
       const revRes = await fetch(`${API_BASE}/reviews/business/${bizId}`);
       if (revRes.ok) {
@@ -135,7 +133,7 @@ function App() {
       }
     } catch (e) {
       console.log('Sync error:', e);
-      Alert.alert("Sync Failed", "Could not connect to the server.");
+      // Silent fail on sync — no popup
     }
   };
 

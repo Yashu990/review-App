@@ -56,10 +56,16 @@ sequelize.authenticate()
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 app.get('/rate-us', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public', 'v2.html'));
 });
 
 app.get('/admin', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
@@ -188,7 +194,11 @@ app.post('/api/google-login', async (req, res) => {
     console.log(`[Google Auth] Attempting login with token: ${idToken ? idToken.substring(0, 10) + '...' : 'MISSING'}`);
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      // Audience can be an array to support both Web and Android Client IDs
+      audience: [
+        process.env.GOOGLE_CLIENT_ID, 
+        process.env.ANDROID_GOOGLE_CLIENT_ID
+      ].filter(id => id), // remove any undefined
     });
     const payload = ticket.getPayload();
     const email = payload['email'].toLowerCase().trim();
@@ -291,8 +301,21 @@ app.post('/api/reviews', async (req, res) => {
       });
     }
 
-    // 4. Create the review
-    const newReview = await Review.create({ ...reviewData, businessId });
+    // 4. Strictest Validation: Phone MUST be exactly 10 digits
+    if (!reviewData.customerPhone || String(reviewData.customerPhone).replace(/\D/g, '').length !== 10) {
+      return res.status(400).json({ 
+        error: 'Invalid Phone Number',
+        message: 'Customer phone number must be exactly 10 digits.' 
+      });
+    }
+
+    // 5. Create the review (clean it first)
+    const cleanPhone = String(reviewData.customerPhone).replace(/\D/g, '').substring(0, 10);
+    const newReview = await Review.create({ 
+        ...reviewData, 
+        customerPhone: cleanPhone,
+        businessId 
+    });
     res.status(201).json({ message: 'Feedback Captured', review: newReview });
   } catch (err) {
     console.error('Review Error:', err);
@@ -476,6 +499,26 @@ app.patch('/api/admin/business/:id/upgrade', isAdmin, async (req, res) => {
     res.json({ message: 'User upgraded successfully', business: biz });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Delete Business
+app.delete('/api/admin/business/:id', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const biz = await Business.findByPk(id);
+    if (!biz) return res.status(404).json({ error: 'Business not found' });
+
+    // Reviews are deleted automatically due to ON DELETE CASCADE in the model association,
+    // but we'll do it explicitly here as a safety measure.
+    await Review.destroy({ where: { businessId: id } });
+    await biz.destroy();
+    
+    console.log(`[Admin] Deleted business: ${id}`);
+    res.json({ success: true, message: 'Business deleted successfully' });
+  } catch (err) {
+    console.error('DELETE BUSINESS ERROR:', err);
+    res.status(500).json({ error: 'Database error during deletion: ' + err.message });
   }
 });
 

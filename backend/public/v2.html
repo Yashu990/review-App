@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Give Feedback - Review Boost</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -31,7 +34,7 @@
             display: flex;
             width: 100%;
             max-width: 900px;
-            overflow: hidden;
+            overflow: visible;
             margin: 20px;
         }
         .left-illustration {
@@ -83,10 +86,8 @@
             color: #A0AEC0; /* Gray stars from screenshot? Wait, they look grayish in the screenshot until active */
         }
         .star.selected {
-            color: #A0AEC0; /* Screenshot uses gray/blue-gray active stars */
+            color: #4A5568 !important; /* Darker gray from image */
         }
-        /* Overriding for a bit of gold/standard feel if needed, but following screenshot */
-        .star.selected { color: #A0AEC0; } 
         
         .form-group {
             display: flex;
@@ -104,15 +105,15 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 15px;
-            background: white;
+            background: #F8FAFC;
             color: var(--text-dark);
             font-family: inherit;
             outline: none;
             transition: 0.2s;
         }
         input:focus, textarea:focus {
-            border-color: #CC5DE8;
-            box-shadow: 0 0 0 3px rgba(204, 93, 232, 0.1);
+            border-color: #E64980;
+            box-shadow: 0 0 0 3px rgba(230, 73, 128, 0.1);
         }
         .submit-btn {
             background-color: var(--primary);
@@ -191,6 +192,7 @@
         <!-- Right Side: Content -->
         <div class="right-content" id="form-container">
             <div id="initial-view">
+                <div id="v21-badge" style="background-color: #E53E3E; color: white; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 900; display: inline-block; margin-bottom: 20px; animation: pulse 1s infinite; letter-spacing: 1px;">VERSION 2.1 ACTIVE</div>
                 <h1>Give feedback</h1>
                 <p class="subtitle" id="biz-question">What are your thoughts on the experience with <span class="biz-accent" id="biz-name-display">Loading...</span>?</p>
                 
@@ -205,30 +207,97 @@
 
             <div id="review-form">
                 <div class="form-group">
+                    <label>Your feedback</label>
+                    <textarea id="reason" rows="3" placeholder="Tell us what went wrong..."></textarea>
+                </div>
+
+                <div class="form-group">
                     <label>Your Name:</label>
                     <input type="text" id="name" placeholder="Enter your name">
                 </div>
+
                 <div class="form-group">
-                    <label>Your Number:</label>
-                    <input type="tel" id="phone" placeholder="Enter your phone number">
+                    <label>Your Number: <span id="phone-count" style="font-weight:400; color:#A0AEC0; font-size:12px;">(0/10)</span></label>
+                    <input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        id="phone"
+                        placeholder="10 Digits Only"
+                        autocomplete="tel"
+                        maxlength="10"
+                    >
                 </div>
-                <div class="form-group">
-                    <label>What are the main reasons for your rating?</label>
-                    <textarea id="reason" rows="4" placeholder="Your feedback reason"></textarea>
+
+                <button class="submit-btn" style="background-color: #E64980; width: 140px;" onclick="submitFeedback()">Submit</button>
+
+                <!-- Promotional Banner -->
+                <div style="background-color: #2B78AD; margin-top: 30px; border-radius: 4px; padding: 20px; border: 1px solid #1A4D6E; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <p style="color: #FFEB3B; font-weight: 500; font-size: 14px; line-height: 1.6; text-align: center; margin: 0;">
+                        Give us a chance to improve our services also get exclusive tips, offer and campaigns. Drop your phone no. if you are interested !
+                    </p>
                 </div>
-                <button class="submit-btn" onclick="submitFeedback()">Submit</button>
             </div>
 
             <!-- Success State -->
-            <div class="success-view hidden" id="success-view">
-                <div class="success-icon">✅</div>
-                <h2>Feedback Submitted!</h2>
-                <p>Thank you for helping us improve our services.</p>
-            </div>
-        </div>
-    </div>
+            <div class="success-view hidden" id="success-view" style="text-align: center; padding: 30px 20px;">
+                <div style="font-size: 70px; margin-bottom: 16px;">✅</div>
+                <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 10px; color: #2D3748;">Feedback Submitted!</h2>
+                <p style="color: #718096; margin-bottom: 24px; line-height: 1.5; font-size: 15px;">Thank you for helping us improve our services.</p>
+
+                <!-- Download Button -->
+                <a id="download-btn" href="#" target="_blank"
+                   style="display: block; background: linear-gradient(135deg, #0066FF, #0044CC); color: white; padding: 16px 24px; border-radius: 14px; font-size: 17px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 20px rgba(0,102,255,0.3); margin: 0 auto 12px auto; max-width: 280px; border: 2px solid #0044CC;">
+                    ⬇️ Download Our App
+                </a>
+                <p style="color: #A0AEC0; font-size: 12px; margin: 0;">Available on Android &amp; iOS</p>
+            </div> <!-- end success-view -->
+        </div> <!-- end right-content -->
+    </div> <!-- end main-card -->
 
     <script>
+        // ── NUCLEAR Phone Enforcer ──
+        function enforcePhone() {
+            const el = document.getElementById('phone');
+            if (!el) return;
+            
+            let v = el.value.replace(/\D/g, ''); // Remove non-digits
+            if (v.length > 10) v = v.substring(0, 10);
+            
+            if (el.value !== v) el.value = v;
+
+            const counter = document.getElementById('phone-count');
+            if (counter) {
+                counter.textContent = '(' + v.length + '/10)';
+                counter.style.color = v.length === 10 ? '#38A169' : '#E53E3E';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const ph = document.getElementById('phone');
+            if (!ph) return;
+            
+            // Block typing if at 10 digits
+            ph.onkeydown = function(e) {
+                if (this.value.length >= 10 && e.keyCode !== 8 && e.keyCode !== 46 && !e.ctrlKey && !e.metaKey) {
+                    return false;
+                }
+            };
+
+            // Double check on every change event
+            ['input','change','keyup','paste','blur'].forEach(evt => {
+                ph.addEventListener(evt, enforcePhone);
+            });
+
+            // Loop check (Safety Net)
+            setInterval(enforcePhone, 500);
+        });
+
+        // Pulse animation for the version badge
+        const style = document.createElement('style');
+        style.textContent = '@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }';
+        document.head.appendChild(style);
+
         let selectedStars = 0;
         let googleLink = "";
         let privacyTier = "5-star"; // Default
@@ -318,6 +387,11 @@
 
             if (!name || !phone || !reason) {
                 alert("Please fill in all details.");
+                return;
+            }
+
+            if (phone.length !== 10) {
+                alert("Please enter a valid 10-digit phone number.");
                 return;
             }
 

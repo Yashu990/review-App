@@ -168,17 +168,8 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
           <TouchableOpacity style={styles.editButton} onPress={() => setIsEditModalVisible(true)}><Text style={styles.editButtonText}>🖊️  Edit Profile</Text></TouchableOpacity>
         </View>
 
-        {/* ── Subscription Plan Card ── */}
-        <View style={styles.planCard}>
-           <View>
-              <Text style={styles.planLabel}>Current Plan</Text>
-              <View style={styles.planBadge}>
-                 <Text style={styles.planName}>
-                    {business?.plan || 'Free Trial'}
-                    {business?.plan === 'Free Trial' && ` (${trial.expired ? 'Expired' : `${trial.daysLeft}d left`})`}
-                 </Text>
-              </View>
-           </View>
+        {/* ── Upgrade Button Section ── */}
+        <View style={[styles.planCard, { justifyContent: 'center' }]}>
            <TouchableOpacity style={styles.upgradeBtn} onPress={() => setIsUpgradeVisible(true)}>
               <Text style={styles.upgradeBtnText}>Upgrade Now 🚀</Text>
            </TouchableOpacity>

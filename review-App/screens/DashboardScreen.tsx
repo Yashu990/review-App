@@ -116,12 +116,6 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
             <Text style={styles.statValue}>{avgRating}★</Text>
             <Text style={styles.statHint}>Internal Score</Text>
           </View>
-
-          <View style={[styles.statCard, {backgroundColor: '#E8F5E9', borderColor: '#4CAF50', borderWidth: 1}]}>
-            <Text style={[styles.statLabel, {color: '#2E7D32'}]}>Review Credits</Text>
-            <Text style={[styles.statValue, {color: '#2E7D32'}]}>{business?.credits ?? 0}</Text>
-            <Text style={[styles.statHint, {color: '#4CAF50'}]}>Total Balance</Text>
-          </View>
         </View>
 
         {/* Quick Actions */}
@@ -174,11 +168,8 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
           )}
         </View>
 
-        {/* Diagnostic: Show Business ID at the very bottom */}
-        <View style={{padding: 20, alignItems: 'center', opacity: 0.5, marginBottom: 100}}>
-          <Text style={{fontSize: 10, color: COLORS.mediumGray}}>Device Connected to: {SERVER_URL}</Text>
-          <Text style={{fontSize: 10, color: COLORS.mediumGray}}>Business ID: {business?.id}</Text>
-        </View>
+
+
       </ScrollView>
 
       {/* Bottom Navigation */}

@@ -84,6 +84,11 @@ export function CustomerReviewScreen({
         return;
       }
 
+      if (number.length !== 10) {
+        Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
+        return;
+      }
+
       onSubmitPrivateReview({ name, number, comment, rating });
       setShowSuccess(true);
     }
@@ -188,10 +193,11 @@ export function CustomerReviewScreen({
                 <Text style={styles.label}>Your Number:</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your phone number"
+                  placeholder="Enter your 10-digit number"
                   value={number}
-                  onChangeText={setNumber}
-                  keyboardType="phone-pad"
+                  onChangeText={(val) => setNumber(val.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={10}
                 />
               </View>
 

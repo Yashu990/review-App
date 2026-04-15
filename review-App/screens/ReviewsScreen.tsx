@@ -43,7 +43,9 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
   const trial = isTrialExpired(businesses[0]);
 
   const handleCall = (phone: string) => {
-    Linking.openURL(`tel:${phone}`).catch(() => {
+    // Trim and sanitize for safety
+    const cleanPhone = String(phone).replace(/\D/g, '').substring(0, 10);
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
       Alert.alert('Error', 'Unable to initiate call.');
     });
   };
@@ -84,25 +86,7 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
           </TouchableOpacity>
         </View>
 
-        {/* ── Limit Indicator (Free Trial) ── */}
-        {(businesses[0]?.plan === 'Free Trial' || !businesses[0]?.plan) && (
-          <View style={styles.limitCard}>
-            <View style={styles.limitHeader}>
-              <Text style={styles.limitLabel}>{trial.expired ? 'Trial Expired' : 'Free Trial Usage'}</Text>
-              <Text style={styles.limitCount}>{trial.expired ? '🔒 Locked' : `${reviews.length} / 5 Reviews`}</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: trial.expired ? '100%' : `${Math.min((reviews.length / 5) * 100, 100)}%`, backgroundColor: trial.expired ? COLORS.error : COLORS.primary }]} />
-            </View>
-            {(reviews.length >= 5 || trial.expired) && (
-              <TouchableOpacity style={styles.upgradeNotice} onPress={() => onScreenChange?.('settings')}>
-                <Text style={styles.upgradeNoticeText}>
-                   {trial.expired ? '⚠️ Trial ended! Upgrade to reactivate QR.' : '⚠️ Limit reached! Upgrade to capture more. 🚀'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        {/* Reviews List */}
 
         {reviews.length === 0 ? (
           <View style={styles.emptyState}>
@@ -139,7 +123,7 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
                   onPress={() => handleCall(review.customerPhone)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.callButtonText}>📞 Call {review.customerPhone}</Text>
+                  <Text style={styles.callButtonText}>📞 Call {String(review.customerPhone).substring(0, 10)}</Text>
                 </TouchableOpacity>
               </View>
             </View>
