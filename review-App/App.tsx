@@ -22,6 +22,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { ReferralScreen } from './screens/ReferralScreen';
 import { LegalScreen } from './screens/LegalScreen';
+import { ReportsScreen } from './screens/ReportsScreen';
 import { API_BASE } from './constants';
 
 const COLORS = {
@@ -62,13 +63,13 @@ export interface PrivateReview {
 
 export function isTrialExpired(business?: Business): { expired: boolean; daysLeft: number } {
   if (!business || business.plan !== 'Free Trial') return { expired: false, daysLeft: 7 };
-  
+
   const createdDate = business.createdAt ? new Date(business.createdAt) : new Date();
   const now = new Date();
   const diffTime = now.getTime() - createdDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   const daysLeft = Math.max(0, 7 - diffDays);
-  
+
   return {
     expired: daysLeft <= 0,
     daysLeft: daysLeft
@@ -80,7 +81,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
-  
+
   // Data State
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [privateReviews, setPrivateReviews] = useState<PrivateReview[]>([]);
@@ -96,7 +97,7 @@ function App() {
 
         // Only show onboarding if the user has NEVER completed it before
         if (hasOnboarded !== 'true') {
-          setShowOnboarding(true); 
+          setShowOnboarding(true);
         }
 
         if (stored === 'true' && storedBiz) {
@@ -224,6 +225,10 @@ function App() {
   // ── Handle Hardware Back Button (Android) ──
   useEffect(() => {
     const backAction = () => {
+      if (currentScreen === 'reports' || currentScreen === 'referral') {
+        setCurrentScreen('settings');
+        return true;
+      }
       if (currentScreen !== 'dashboard' && currentScreen !== 'login') {
         setCurrentScreen('dashboard');
         return true;
@@ -240,7 +245,7 @@ function App() {
     }
 
     if (showOnboarding) {
-       return <OnboardingScreen onFinish={handleFinishOnboarding} />;
+      return <OnboardingScreen onFinish={handleFinishOnboarding} />;
     }
 
     if (!isLoggedIn) {
@@ -249,32 +254,32 @@ function App() {
 
     switch (currentScreen) {
       case 'dashboard':
-        return <DashboardScreen 
+        return <DashboardScreen
           business={businesses[0]}
-          reviews={privateReviews} 
-          onScreenChange={setCurrentScreen} 
+          reviews={privateReviews}
+          onScreenChange={setCurrentScreen}
           logo={businesses[0]?.logo}
           onRefresh={() => fetchData(selectedBusinessId!)}
         />;
       case 'qrcodes':
-        return <QRCodesScreen 
+        return <QRCodesScreen
           businesses={businesses}
           onSelectBusiness={(id) => {
             setSelectedBusinessId(id);
             setCurrentScreen('customer_review');
           }}
-          onScreenChange={setCurrentScreen} 
+          onScreenChange={setCurrentScreen}
         />;
       case 'reviews':
-        return <ReviewsScreen 
-          reviews={privateReviews} 
+        return <ReviewsScreen
+          reviews={privateReviews}
           businesses={businesses}
           onScreenChange={setCurrentScreen}
           onRefresh={() => fetchData(selectedBusinessId!)}
         />;
       case 'settings':
-        return <SettingsScreen 
-          business={businesses[0]} 
+        return <SettingsScreen
+          business={businesses[0]}
           onLogout={handleLogout}
           onReset={handleReset}
           onScreenChange={setCurrentScreen}
@@ -285,15 +290,20 @@ function App() {
           business={businesses[0]}
           onScreenChange={setCurrentScreen}
         />;
+      case 'reports':
+        return <ReportsScreen 
+          business={businesses[0]}
+          onScreenChange={setCurrentScreen}
+        />;
       case 'customer_review':
         const activeBiz = businesses.find(b => b.id === selectedBusinessId) || businesses[0];
-        
+
         // Safety check to prevent crash if businesses list is empty
         if (!activeBiz) {
           return <DashboardScreen onScreenChange={setCurrentScreen} reviews={privateReviews} />;
         }
 
-        return <CustomerReviewScreen 
+        return <CustomerReviewScreen
           businessName={activeBiz.name || 'Your Business'}
           googleReviewLink={activeBiz.googleReviewLink || ''}
           privacyTier={activeBiz.privacyTier || '5-star'}
@@ -320,10 +330,10 @@ function App() {
       case 'legal_about':
         return <LegalScreen type="about" onBack={() => setCurrentScreen('settings')} />;
       default:
-        return <DashboardScreen 
+        return <DashboardScreen
           business={businesses[0]}
-          reviews={privateReviews} 
-          onScreenChange={setCurrentScreen} 
+          reviews={privateReviews}
+          onScreenChange={setCurrentScreen}
           logo={businesses[0]?.logo}
         />;
     }

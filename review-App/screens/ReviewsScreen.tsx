@@ -78,7 +78,7 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
             <Text style={styles.headerTitle}>Captured Feedback</Text>
             <Text style={styles.headerSubtitle}>Follow up with unhappy customers.</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileIconButton}
             onPress={() => onScreenChange?.('settings')}
           >
@@ -91,7 +91,7 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
         {reviews.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No captured reviews yet.</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => onScreenChange('qrcodes')}
             >
@@ -112,13 +112,13 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
               </View>
 
               <Text style={styles.bizTarget}>Feedback for: {getBusinessName(review.businessId)}</Text>
-              
+
               <View style={styles.commentBox}>
                 <Text style={styles.commentText}>"{review.comment}"</Text>
               </View>
 
               <View style={styles.cardActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.callButton}
                   onPress={() => handleCall(review.customerPhone)}
                   activeOpacity={0.8}
@@ -142,8 +142,8 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
           <Text style={styles.navLabel}>QR Codes</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => onScreenChange('reviews')}>
-          <Text style={[styles.navIcon, {color: COLORS.primary}]}>💬</Text>
-          <Text style={[styles.navLabel, {color: COLORS.primary}]}>Reviews</Text>
+          <Text style={[styles.navIcon, { color: COLORS.primary }]}>💬</Text>
+          <Text style={[styles.navLabel, { color: COLORS.primary }]}>Reviews</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => onScreenChange('settings')}>
           <Text style={styles.navIcon}>⚙️</Text>
@@ -157,11 +157,11 @@ export function ReviewsScreen({ reviews, businesses, onScreenChange, onRefresh }
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   scrollContent: { padding: 20, paddingBottom: 100 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 24 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24
   },
   headerTitle: { fontSize: 28, fontWeight: '700', color: COLORS.darkGray },
   headerSubtitle: { fontSize: 14, color: COLORS.mediumGray, marginTop: 4 },

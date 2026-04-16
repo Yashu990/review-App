@@ -41,11 +41,11 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
     if (onRefresh) await onRefresh();
     setRefreshing(false);
   };
-  
+
   const generateLink = () => `${SERVER_URL}/rate-us?businessId=${business?.id}`;
   const negativeReviews = reviews.filter(r => r.rating <= 3);
   const totalReviews = negativeReviews.length;
-  const avgRating = reviews.length > 0 
+  const avgRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
     : '0';
 
@@ -54,7 +54,7 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
       onScreenChange(tab);
     }
   };
-  
+
   const trial = isTrialExpired(business);
 
   return (
@@ -73,18 +73,18 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
             <Text style={styles.headerTitle}>Review Dashboard</Text>
             <Text style={styles.headerSubtitle}>{business?.name || 'Pro Management'}</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileIconButton}
             onPress={() => handleTabChange('settings')}
           >
             {logo ? (
-               <Image source={{ uri: logo }} style={styles.profileLogo} />
+              <Image source={{ uri: logo }} style={styles.profileLogo} />
             ) : (
-               <Text style={styles.profileEmoji}>👤</Text>
+              <Text style={styles.profileEmoji}>👤</Text>
             )}
           </TouchableOpacity>
         </View>
-        
+
         {/* Trial Status Banner Removed */}
         {/* ── NEW: Instant QR Code Section ── */}
         {business?.id && (
@@ -108,7 +108,7 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Captured (1-3★)</Text>
             <Text style={styles.statValue}>{totalReviews}</Text>
-            <Text style={[styles.statHint, {color: COLORS.error}]}>Action Required</Text>
+            <Text style={[styles.statHint, { color: COLORS.error }]}>Action Required</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -122,15 +122,15 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionCard}
               onPress={() => handleTabChange('qrcodes')}
             >
               <Text style={styles.actionIcon}>📱</Text>
               <Text style={styles.actionLabel}>Manage QR</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionCard}
               onPress={() => handleTabChange('reviews')}
             >
@@ -175,8 +175,8 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('dashboard')}>
-          <Text style={[styles.navIcon, {color: COLORS.primary}]}>📊</Text>
-          <Text style={[styles.navLabel, {color: COLORS.primary}]}>Dashboard</Text>
+          <Text style={[styles.navIcon, { color: COLORS.primary }]}>📊</Text>
+          <Text style={[styles.navLabel, { color: COLORS.primary }]}>Dashboard</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabChange('qrcodes')}>
           <Text style={styles.navIcon}>📱</Text>
@@ -200,7 +200,7 @@ export function DashboardScreen({ business, reviews, onScreenChange, logo, onRef
             <Text style={styles.expiredModalText}>
               Your 7-day free trial has ended. Please upgrade your plan to reactivate your Review QR Code and continue capturing feedback.
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.expiredModalButton}
               onPress={() => handleTabChange('settings')}
             >
@@ -253,11 +253,11 @@ const styles = StyleSheet.create({
   navIcon: { fontSize: 20 },
   navLabel: { fontSize: 10, color: COLORS.mediumGray, marginTop: 4, fontWeight: '600' },
   // QR Quick Section
-  qrQuickSection: { 
-    flexDirection: 'row', 
-    backgroundColor: COLORS.primary, 
-    borderRadius: 20, 
-    padding: 18, 
+  qrQuickSection: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    padding: 18,
     marginBottom: 32,
     alignItems: 'center',
     elevation: 4,
@@ -270,12 +270,12 @@ const styles = StyleSheet.create({
   qrLabel: { color: COLORS.white, fontSize: 18, fontWeight: '800', marginBottom: 4 },
   qrSub: { color: '#ffffffcc', fontSize: 11, fontWeight: '500', lineHeight: 16 },
   qrBox: { backgroundColor: COLORS.white, padding: 8, borderRadius: 12 },
-  trialBanner: { 
-    backgroundColor: '#FFF4E5', 
-    padding: 16, 
-    borderRadius: 16, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  trialBanner: {
+    backgroundColor: '#FFF4E5',
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
     borderColor: '#FFD599',
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   trialSub: { fontSize: 12, color: COLORS.mediumGray, marginTop: 2 },
   trialUpgradeBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, marginLeft: 10 },
   trialUpgradeText: { color: COLORS.white, fontWeight: '700', fontSize: 12 },
-  
+
   // Expired Modal Styles
   expiredOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   expiredModal: {
     backgroundColor: COLORS.white, padding: 30, borderRadius: 24, alignItems: 'center', width: '100%',
-    shadowColor: '#000', shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.4, shadowRadius: 20, elevation: 15
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 15
   },
   expiredModalTitle: { fontSize: 26, fontWeight: '900', color: COLORS.error, marginBottom: 12 },
   expiredModalText: { fontSize: 16, color: COLORS.darkGray, textAlign: 'center', marginBottom: 28, lineHeight: 24, fontWeight: '500' },

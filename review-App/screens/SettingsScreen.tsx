@@ -203,9 +203,9 @@ export function SettingsScreen({ business, onLogout, onReset, onScreenChange, on
         {/* ── Programs and Products ── */}
         <Text style={styles.sectionLabel}>Programs and Products</Text>
         <View style={styles.menuSection}>
-          <MenuItem icon="📊" label="See Your GMB Report"      onPress={openGMB} />
+          <MenuItem icon="📊" label="See Your GMB Report"      onPress={() => onScreenChange?.('reports')} />
           <MenuItem icon="🎁" label="Refer & Earn"             onPress={handleRefer} />
-          <MenuItem icon="🖨️" label="Activate Your Physical QR" onPress={() => onScreenChange?.('qrcodes')} />
+          <MenuItem icon="🖨️" label="Activate Your NFC Physical QR" onPress={() => onScreenChange?.('qrcodes')} />
         </View>
 
         {/* ── Support & Info ── */}

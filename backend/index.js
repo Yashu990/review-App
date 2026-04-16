@@ -102,10 +102,10 @@ app.get('/api/business/:id', async (req, res) => {
 // Register
 app.post('/api/register', async (req, res) => {
   try {
-    const { 
-      name, ownerName, ownerPhone, googleReviewLink, 
-      email, password, usedReferralCode, 
-      businessType, privacyTier, qrStyle 
+    const {
+      name, ownerName, ownerPhone, googleReviewLink,
+      email, password, usedReferralCode,
+      businessType, privacyTier, qrStyle
     } = req.body;
 
     if (!name || !ownerName || !ownerPhone || !googleReviewLink || !email || !password) {
@@ -152,7 +152,7 @@ app.post('/api/register', async (req, res) => {
         await referrer.increment('points', { by: 100 });
         await referrer.increment('referralCount', { by: 1 });
         await newBiz.increment('points', { by: 100 });
-        
+
         console.log(`Referral points awarded to: ${referrer.email} & ${newBiz.email}`);
       }
     }
@@ -168,7 +168,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const biz = await Business.findOne({ where: { email: email.toLowerCase().trim() } });
-    
+
     if (!biz) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -196,7 +196,7 @@ app.post('/api/google-login', async (req, res) => {
       idToken,
       // Audience can be an array to support both Web and Android Client IDs
       audience: [
-        process.env.GOOGLE_CLIENT_ID, 
+        process.env.GOOGLE_CLIENT_ID,
         process.env.ANDROID_GOOGLE_CLIENT_ID
       ].filter(id => id), // remove any undefined
     });
@@ -205,15 +205,15 @@ app.post('/api/google-login', async (req, res) => {
 
     // Find business by email
     let biz = await Business.findOne({ where: { email } });
-    
+
     if (!biz) {
       // First time Google user — they need to finish registration (manual location etc)
       // For now, we return that they don't exist yet but we have their email
-      return res.status(200).json({ 
-        newUser: true, 
-        email, 
+      return res.status(200).json({
+        newUser: true,
+        email,
         name: payload['name'],
-        message: 'Google verified. Please complete your business registration.' 
+        message: 'Google verified. Please complete your business registration.'
       });
     }
 
@@ -253,7 +253,7 @@ app.post('/api/business/:id/generate-referral', async (req, res) => {
   try {
     const biz = await Business.findByPk(req.params.id);
     if (!biz) return res.status(404).json({ error: 'Business not found' });
-    
+
     // If already has one, just return it
     if (biz.referralCode) return res.json({ referralCode: biz.referralCode });
 
@@ -268,7 +268,7 @@ app.post('/api/business/:id/generate-referral', async (req, res) => {
 
     biz.referralCode = referralCode;
     await biz.save();
-    
+
     res.json({ referralCode: biz.referralCode });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -279,23 +279,23 @@ app.post('/api/business/:id/generate-referral', async (req, res) => {
 app.post('/api/reviews', async (req, res) => {
   try {
     const { businessId, id, _id, ...reviewData } = req.body;
-    
+
     // 1. Get the business to check their plan
     const biz = await Business.findByPk(businessId);
     if (!biz) return res.status(404).json({ error: 'Business not found' });
 
     // 2. Count current captured reviews (1-3 stars)
-    const reviewCount = await Review.count({ 
-      where: { 
+    const reviewCount = await Review.count({
+      where: {
         businessId,
         rating: { [require('sequelize').Op.lte]: 3 } // only count negative ones if that's the limit
-      } 
+      }
     });
 
     // 3. Check credits limit
     if (reviewCount >= biz.credits) {
-      return res.status(403).json({ 
-        error: 'Limit reached!', 
+      return res.status(403).json({
+        error: 'Limit reached!',
         upgradeRequired: true,
         message: `You have exhausted your ${biz.credits} review credits. Please contact Helonix on WhatsApp (+91 99997 28733) to upgrade and continue.`
       });
@@ -303,22 +303,106 @@ app.post('/api/reviews', async (req, res) => {
 
     // 4. Strictest Validation: Phone MUST be exactly 10 digits
     if (!reviewData.customerPhone || String(reviewData.customerPhone).replace(/\D/g, '').length !== 10) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid Phone Number',
-        message: 'Customer phone number must be exactly 10 digits.' 
+        message: 'Customer phone number must be exactly 10 digits.'
       });
     }
 
     // 5. Create the review (clean it first)
     const cleanPhone = String(reviewData.customerPhone).replace(/\D/g, '').substring(0, 10);
-    const newReview = await Review.create({ 
-        ...reviewData, 
-        customerPhone: cleanPhone,
-        businessId 
+    const newReview = await Review.create({
+      ...reviewData,
+      customerPhone: cleanPhone,
+      businessId
     });
     res.status(201).json({ message: 'Feedback Captured', review: newReview });
   } catch (err) {
     console.error('Review Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Track Positive Redirect (New)
+app.post('/api/analytics/track-positive', async (req, res) => {
+  try {
+    const { businessId, rating } = req.body;
+    if (!businessId) return res.status(400).json({ error: 'Business ID required' });
+
+    // We create a "Review" record with empty comments for positive redirects
+    // This allows us to use the existing Review table for analytics
+    await Review.create({
+      businessId,
+      customerName: 'Google Redirect',
+      customerPhone: '0000000000',
+      comment: 'Redirected to Google Reviews',
+      rating: rating || 5
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Track Positive Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Analytics Report (New)
+app.get('/api/analytics/report/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { filter = 'monthly' } = req.query; // daily, weekly, monthly
+
+    const reviews = await Review.findAll({
+      where: { businessId: id },
+      order: [['createdAt', 'ASC']],
+    });
+
+    // Grouping logic
+    const report = {
+      positive: 0,
+      negative: 0,
+      labels: [],
+      dataPositive: [],
+      dataNegative: []
+    };
+
+    const grouped = {};
+
+    reviews.forEach(r => {
+      const date = new Date(r.createdAt);
+      let key;
+      if (filter === 'daily') {
+        key = date.toISOString().split('T')[0];
+      } else if (filter === 'weekly') {
+        // Simple week key: YYYY-WW
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        key = `${date.getFullYear()}-W${weekNum}`;
+      } else {
+        // monthly
+        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = { positive: 0, negative: 0 };
+      }
+
+      if (r.rating >= 4) {
+        grouped[key].positive++;
+        report.positive++;
+      } else {
+        grouped[key].negative++;
+        report.negative++;
+      }
+    });
+
+    report.labels = Object.keys(grouped).sort();
+    report.dataPositive = report.labels.map(l => grouped[l].positive);
+    report.dataNegative = report.labels.map(l => grouped[l].negative);
+
+    res.json(report);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -342,7 +426,7 @@ app.get('/api/reviews/business/:id', async (req, res) => {
 app.post('/api/payments/create-order', async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
-    
+
     if (!amount) return res.status(400).json({ error: 'Amount is required' });
 
     const options = {
@@ -355,10 +439,10 @@ app.post('/api/payments/create-order', async (req, res) => {
     res.json(order);
   } catch (err) {
     console.error('Razorpay Order Error:', err);
-    res.status(500).json({ 
-      error: 'Failed to create payment order', 
+    res.status(500).json({
+      error: 'Failed to create payment order',
       details: err.message,
-      description: err.error ? err.error.description : null 
+      description: err.error ? err.error.description : null
     });
   }
 });
@@ -366,9 +450,9 @@ app.post('/api/payments/create-order', async (req, res) => {
 // 2. Verify Payment
 app.post('/api/payments/verify', async (req, res) => {
   try {
-    const { 
-      razorpay_order_id, 
-      razorpay_payment_id, 
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
       razorpay_signature,
       businessId,
       planName
@@ -407,42 +491,42 @@ app.post('/api/business/search-places', async (req, res) => {
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey || apiKey === 'YOUR_GOOGLE_PLACES_API_KEY_HERE' || apiKey.includes('YOUR_')) {
-      return res.status(500).json({ error: 'Google Places API Key not configured' });
+    return res.status(500).json({ error: 'Google Places API Key not configured' });
   }
 
   try {
-      console.log(`\n--- NEW SEARCH REQUEST ---`);
-      console.log(`Query: "${query}"`);
-      
-      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-      if (!apiKey) {
-        console.error('ERROR: No Google Places API Key found in .env!');
-        return res.status(500).json({ error: 'Config error' });
-      }
+    console.log(`\n--- NEW SEARCH REQUEST ---`);
+    console.log(`Query: "${query}"`);
 
-      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
-      const searchRes = await fetch(url);
-      const data = await searchRes.json();
-      
-      console.log(`Google API Status: ${data.status}`);
-      if (data.error_message) console.error(`Google API Error Message: ${data.error_message}`);
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      console.error('ERROR: No Google Places API Key found in .env!');
+      return res.status(500).json({ error: 'Config error' });
+    }
 
-      if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
-          const results = (data.results || []).map(p => ({
-              name: p.name,
-              address: p.formatted_address,
-              placeId: p.place_id,
-              link: `https://search.google.com/local/writereview?placeid=${p.place_id}`
-          }));
-          console.log(`Success: Found ${results.length} results.`);
-          res.json(results);
-      } else {
-          console.error(`Google Search Failed with status: ${data.status}`);
-          res.status(500).json({ error: `Google API Error: ${data.status}` });
-      }
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
+    const searchRes = await fetch(url);
+    const data = await searchRes.json();
+
+    console.log(`Google API Status: ${data.status}`);
+    if (data.error_message) console.error(`Google API Error Message: ${data.error_message}`);
+
+    if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
+      const results = (data.results || []).map(p => ({
+        name: p.name,
+        address: p.formatted_address,
+        placeId: p.place_id,
+        link: `https://search.google.com/local/writereview?placeid=${p.place_id}`
+      }));
+      console.log(`Success: Found ${results.length} results.`);
+      res.json(results);
+    } else {
+      console.error(`Google Search Failed with status: ${data.status}`);
+      res.status(500).json({ error: `Google API Error: ${data.status}` });
+    }
   } catch (e) {
-      console.error('GOOGLE SEARCH EXCEPTION:', e.name, e.message);
-      res.status(500).json({ error: 'Search failed. Check server logs for details.' });
+    console.error('GOOGLE SEARCH EXCEPTION:', e.name, e.message);
+    res.status(500).json({ error: 'Search failed. Check server logs for details.' });
   }
 });
 
@@ -494,7 +578,7 @@ app.patch('/api/admin/business/:id/upgrade', isAdmin, async (req, res) => {
     if (plan !== undefined) biz.plan = plan;
     if (credits !== undefined) biz.credits = credits;
     if (points !== undefined) biz.points = points;
-    
+
     await biz.save();
     res.json({ message: 'User upgraded successfully', business: biz });
   } catch (err) {
@@ -513,7 +597,7 @@ app.delete('/api/admin/business/:id', isAdmin, async (req, res) => {
     // but we'll do it explicitly here as a safety measure.
     await Review.destroy({ where: { businessId: id } });
     await biz.destroy();
-    
+
     console.log(`[Admin] Deleted business: ${id}`);
     res.json({ success: true, message: 'Business deleted successfully' });
   } catch (err) {
